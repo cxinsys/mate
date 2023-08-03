@@ -1,2 +1,3 @@
-# mate
-MATE represents Manycore-processor-Accelerated Transfer Entropy computation
+# MATE
+- **MATE** represents **M**anycore-processor-**A**ccelerated **T**ransfer **E**ntropy computation.
+
