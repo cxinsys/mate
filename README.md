@@ -6,22 +6,6 @@
 - :snake: [Anaconda](https://www.anaconda.com) is recommended to use and develop MATE.
 - :penguin: Linux distros are tested and recommended to use and develop MATE.
 
-### Anaconda virtual environment
-
-After installing anaconda, create a conda virtual environment for MATE.
-In the following command, you can change the Python version
-(e.g.,`python=3.7` or `python=3.9`).
-
-```
-conda create -n mate python=3.9
-```
-
-Now, we can activate our virtual environment for MATE as follows.
-
-```
-conda activate mate
-```
-<br>
 
 MATE requires following backend-specific dependencies to be installed:
 
@@ -62,7 +46,7 @@ Now, we need to install MATE as a module.
 
 ```
 cd mate
-python setup.py install
+pip install -e .
 ```
 
 ## Tutorial
