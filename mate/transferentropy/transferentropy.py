@@ -189,4 +189,4 @@ class TransferEntropy(object):
 
             sem.release()
 
-            print("[%s, Batch #%d] Batch processing elapsed time: %f" % (str(self.am.device).upper(), i_iter + 1, time.time() - t_beg_batch))
+            print("[%s ID: %d, Batch #%d] Batch processing elapsed time: %f" % (str(self.am.device).upper(), self.am.device_id, i_iter + 1, time.time() - t_beg_batch))
