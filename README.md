@@ -72,6 +72,8 @@ worker = mate.MATE()
 #### Run MATE
 
 #### parameters
+
+
 - **arr**: numpy array for transfer entropy calculation, required
 - **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
 - **device**: optional, default: 'cpu'
@@ -98,6 +100,8 @@ result_matrix = worker.run(arr=arr,
 #### Create MATELightning instance
 
 #### parameters
+
+
 - **arr**: numpy array for transfer entropy calculation, required
 - **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
 - **kp**: kernel percentile, optional, default: 0.5
@@ -119,9 +123,14 @@ worker = mate.MATELightning(arr=arr,
                             len_time=len_time,
                             dt=dt)
 ```
+<br>
 
-### Run MATELightning
+#### Run MATELightning
 #### parameters
+
+MATELightning's run function parameters take the same values as [PyTorch's DataLoader](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader)
+and [PyTorch Lightning's Trainer](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html#trainer). 
+For additional options for parameters, see those documents
 
 - **device**: required, 'gpu', 'cpu' or 'tpu' etc
 - **devices**: required, int or [list of device id]
@@ -133,6 +142,8 @@ result_matrix = worker.run(device=device,
                            batch_size=batch_size,
                            num_worker=num_worker)
 ```
+
+<br>
 
 ## TODO
 
