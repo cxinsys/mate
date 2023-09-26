@@ -40,7 +40,7 @@ Use 'XLA_PYTHON_CLIENT_PREALLOCATE=false' to disables the preallocation behavior
 
 MATE supports multi-GPU and multi-TPU Transfer Entropy calculations via PyTorch Lightning.<br>
 
-If you're using PyTorch Lightning, use the [MATELightning class](#MATELightning-class). For more information, see MATELightning class below
+If you're using PyTorch Lightning, use the MATELightning class. For more information, see [MATELightning class](#MATELightning-class) below
 
 ### Install from GitHub repository
 First, clone the recent version of this repository.
