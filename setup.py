@@ -8,5 +8,5 @@ setup(name='mate',
       author_email='daewon4you@gmail.com',
       license='BSD-3-Clause',
       packages=find_packages(),
-      install_requires=['numpy', 'scipy'],
+      install_requires=['numpy', 'scipy', 'lightning'],
       zip_safe=False,)

@@ -3,14 +3,14 @@ import numpy as np
 try:
     import cupy as cp
 except (ModuleNotFoundError, ImportError) as err:
-    print("[WARNING] Cannot use GPU computing based on CuPy")
+    pass
 
 try:
     import jax
     from jax import device_put
     import jax.numpy as jnp
 except (ModuleNotFoundError, ImportError) as err:
-    print("[WARNING] Cannot use GPU computing based on Jax")
+    pass
 
 
 def parse_device(device):

@@ -89,7 +89,7 @@ class MATE(object):
             # maxs = np.max(arr, axis=1)
 
             self._bin_arr = arr.copy()
-            self._bin_arr = (arr.T - mins) // kw
+            self._bin_arr = (self._bin_arr.T - mins) // kw
             self._bin_arr = self._bin_arr.T.astype(dtype)
 
         return self._bin_arr
