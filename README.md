@@ -34,6 +34,14 @@ JAX preallocate 90% of the totla GPU memory when the first JAX operation is run 
 Use 'XLA_PYTHON_CLIENT_PREALLOCATE=false' to disables the preallocation behavior\
 (https://jax.readthedocs.io/en/latest/gpu_memory_allocation.html)
 
+<br>
+
+- :zap: PyTorch Lightning: [Installing PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/starter/introduction.html#install-pytorch-lightning)
+
+MATE supports multi-GPU and multi-TPU Transfer Entropy calculations via PyTorch Lightning.<br>
+
+If you're using PyTorch Lightning, use the [MATELightning class](#MATELightning-class). For more information, see MATELightning class below
+
 ### Install from GitHub repository
 First, clone the recent version of this repository.
 
@@ -86,7 +94,47 @@ result_matrix = worker.run(arr=arr,
                            polyorder=polyorder)
 ```
 
+### MATELightning class
+#### Create MATELightning instance
+
+#### parameters
+- **arr**: numpy array for transfer entropy calculation, required
+- **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
+- **kp**: kernel percentile, optional, default: 0.5
+- **percentile**: data crop percentile, optional, default: 0
+- **win_length**: smoothe func window length parameter, optional, default: 10
+- **polyorder**: smoothe func polyorder parameter, optional, default: 3
+- **len_time**: total length of expression array, optional, default: column length of array
+- **dt**: history length of expression array, optional, default: 1
+
+```angular2html
+import mate
+
+worker = mate.MATELightning(arr=arr,
+                            pairs=pairs,
+                            kp=kp,
+                            percentile=percentile,
+                            win_length=win_length,
+                            polyorder=polyorder,
+                            len_time=len_time,
+                            dt=dt)
+```
+
+### Run MATELightning
+#### parameters
+
+- **device**: required, 'gpu', 'cpu' or 'tpu' etc
+- **devices**: required, int or [list of device id]
+- **batch_size**: required
+- **num_workers**: optional, default: 0
+```angular2html
+result_matrix = worker.run(device=device,
+                           devices=devices,
+                           batch_size=batch_size,
+                           num_worker=num_worker)
+```
+
 ## TODO
 
 - [x] add 'jax' backend module
-- [ ] implement 'pytorch lightning' backend module
+- [x] implement 'pytorch lightning' backend module

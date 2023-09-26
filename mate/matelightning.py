@@ -37,7 +37,6 @@ class MATELightning(object):
                                             win_length=win_length,
                                             polyorder=polyorder)
 
-        self._result_matrix = np.zeros((len(arr), len(arr)), dtype=np.float32)
         self._devices = None
 
         self.model = TELightning(len_time=len_time, dt=dt)
