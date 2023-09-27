@@ -5,7 +5,6 @@ import multiprocessing
 from multiprocessing import Process, shared_memory, Semaphore
 
 import numpy as np
-from scipy.signal import savgol_filter
 
 from mate.transferentropy import TransferEntropy
 from mate.utils import get_gpu_list
@@ -19,15 +18,16 @@ class MATE(object):
                  batch_size=None,
                  kp=0.5,
                  percentile=0,
-                 win_length=10,
-                 polyorder=3,
+                 smooth_func=None,
+                 smooth_param=None,
                  ):
 
         self._kp = kp
         self._percentile = percentile
-        self._win_length = win_length
-        self._polyorder = polyorder
         self._batch_size = batch_size
+
+        self._smooth_func = smooth_func
+        self._smooth_param = smooth_param
 
         self._device = device
         self._device_ids = device_ids
@@ -62,8 +62,8 @@ class MATE(object):
     def create_binned_array(self,
                             kp=None,
                             percentile=None,
-                            win_length=None,
-                            polyorder=None,
+                            smooth_func=None,
+                            smooth_param=None,
                             dtype=np.int32):
 
         if not kp:
@@ -72,18 +72,26 @@ class MATE(object):
         if not percentile:
             percentile = self._percentile
 
-        if not win_length:
-            win_length = self._win_length
+        if not smooth_func:
+            smooth_func = self._smooth_func
 
-        if not polyorder:
-            polyorder = self._polyorder
+        if not smooth_param:
+            smooth_param = self._smooth_param
 
         if self._bin_arr is None:
             arr = self._arr
 
             kw = self.kernel_width(kp, percentile)
 
-            arr = savgol_filter(arr, win_length, polyorder)
+            if smooth_func is not None:
+                print("Smooth Function Apply")
+                if type(smooth_param)==tuple:
+                    arr = smooth_func(arr, *smooth_param)
+                elif type(smooth_param)==dict:
+                    arr = smooth_func(arr, **smooth_param)
+                else:
+                    raise ValueError("Function parameter type must be tuple or dictionary")
+                # arr = savgol_filter(arr, win_length, polyorder)
 
             mins = np.min(arr, axis=1)
             # maxs = np.max(arr, axis=1)
@@ -104,8 +112,8 @@ class MATE(object):
             pairs=None,
             kp=None,
             percentile=None,
-            win_length=None,
-            polyorder=None,
+            smooth_func=None,
+            smooth_param=None,
             ):
 
         if not device:
@@ -135,7 +143,7 @@ class MATE(object):
         if pairs is None:
             if self._pairs is None:
                 self._pairs = permutations(range(len(arr)), 2)
-                self._pairs = np.asarray(tuple(pairs), dtype=np.int32)
+                self._pairs = np.asarray(tuple(self._pairs), dtype=np.int32)
             pairs = self._pairs
 
         if not kp:
@@ -144,19 +152,19 @@ class MATE(object):
         if not percentile:
             percentile = self._percentile
 
-        if not win_length:
-            win_length = self._win_length
+        if not smooth_func:
+            smooth_func = self._smooth_func
 
-        if not polyorder:
-            polyorder = self._polyorder
+        if not smooth_param:
+            smooth_param = self._smooth_param
 
         self._arr = arr
         self._pairs = pairs
 
         arr = self.create_binned_array(kp=kp,
                                        percentile=percentile,
-                                       win_length=win_length,
-                                       polyorder=polyorder)
+                                       smooth_func=smooth_func,
+                                       smooth_param=smooth_param)
 
         n_pairs = len(pairs)
 

@@ -23,8 +23,8 @@ class MATELightning(object):
                  pairs=None,
                  kp=0.5,
                  percentile=0,
-                 win_length=10,
-                 polyorder=3,
+                 smooth_func=None,
+                 smooth_param=None,
                  len_time=None,
                  dt=1):
         super().__init__()
@@ -32,10 +32,10 @@ class MATELightning(object):
         self._pairs = pairs
 
         self._bin_arr = self.create_binned_array(arr=arr,
-                                            kp=kp,
-                                            percentile=percentile,
-                                            win_length=win_length,
-                                            polyorder=polyorder)
+                                                 kp=kp,
+                                                 percentile=percentile,
+                                                 smooth_func=smooth_func,
+                                                 smooth_param=smooth_param,)
 
         self._devices = None
 
@@ -58,12 +58,22 @@ class MATELightning(object):
                             arr=None,
                             kp=None,
                             percentile=None,
-                            win_length=None,
-                            polyorder=None,
+                            smooth_func=None,
+                            smooth_param=None,
                             dtype=np.int32):
 
         kw = self.kernel_width(arr, kp, percentile)
-        arr = savgol_filter(arr, win_length, polyorder)
+
+        if smooth_func is not None:
+            print("Smooth Function Apply")
+            if type(smooth_param) == tuple:
+                arr = smooth_func(arr, *smooth_param)
+            elif type(smooth_param) == dict:
+                arr = smooth_func(arr, **smooth_param)
+            else:
+                raise ValueError("Function parameter type must be tuple or dictionary")
+
+        # arr = savgol_filter(arr, win_length, polyorder)
         mins = np.min(arr, axis=1)
         arr = (arr.T - mins) // kw
 

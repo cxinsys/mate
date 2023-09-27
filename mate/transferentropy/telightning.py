@@ -110,10 +110,15 @@ class TELightning(pl.LightningModule):
         epoch_predict_pairs = self.all_gather(epoch_predict_pairs)
 
         if self.trainer.is_global_zero:
-            for i in range(len(epoch_predict_ef)):
-                entropy_final = epoch_predict_ef[i].detach().cpu().numpy()
-                pairs = epoch_predict_pairs[i].detach().cpu().numpy()
+            if epoch_predict_pairs.dim() > 2:
+                for i in range(len(epoch_predict_ef)):
+                    entropy_final = epoch_predict_ef[i].detach().cpu().numpy()
+                    pairs = epoch_predict_pairs[i].detach().cpu().numpy()
 
+                    self._result_matrix[pairs[:, 0], pairs[:, 1]] = entropy_final
+            else:
+                entropy_final = epoch_predict_ef.detach().cpu().numpy()
+                pairs = epoch_predict_pairs.detach().cpu().numpy()
                 self._result_matrix[pairs[:, 0], pairs[:, 1]] = entropy_final
 
     def return_result(self):

@@ -73,6 +73,9 @@ worker = mate.MATE()
 
 #### parameters
 
+MATE goes through a binning process, which is sensitive to noise. 
+To work around this, you can use a smooth function like 
+scipy's [savgol_filter](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html#scipy-signal-savgol-filter).
 
 - **arr**: numpy array for transfer entropy calculation, required
 - **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
@@ -81,8 +84,8 @@ worker = mate.MATE()
 - **batch_size**: required
 - **kp**: kernel percentile, optional, default: 0.5
 - **percentile**: data crop percentile, optional, default: 0
-- **win_length**: smoothe func window length parameter, optional, default: 10
-- **polyorder**: smoothe func polyorder parameter, optional, default: 3
+- **smooth_func**: smoothe func, optional, default: None
+- **smooth_param**: smoothe func parameters, optional, tuple or dictionary, default: None
 
 ```angular2html
 result_matrix = worker.run(arr=arr,
@@ -92,8 +95,10 @@ result_matrix = worker.run(arr=arr,
                            batch_size=batch_size,
                            kp=kp,
                            percentile=percentile,
-                           win_length=win_length,
-                           polyorder=polyorder)
+                           smooth_func=smooth_func, (ex. smooth_func=savgol_filter)
+                           smooth_param=smooth_param (ex. smooth_param={'window_length': 10,
+                                                                        'polyorder': 3})
+                           )
 ```
 
 ### MATELightning class
@@ -106,8 +111,8 @@ result_matrix = worker.run(arr=arr,
 - **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
 - **kp**: kernel percentile, optional, default: 0.5
 - **percentile**: data crop percentile, optional, default: 0
-- **win_length**: smoothe func window length parameter, optional, default: 10
-- **polyorder**: smoothe func polyorder parameter, optional, default: 3
+- **smooth_func**: smoothe func, optional, default: None
+- **smooth_param**: smoothe func parameters, optional, tuple or dictionary, default: None
 - **len_time**: total length of expression array, optional, default: column length of array
 - **dt**: history length of expression array, optional, default: 1
 
@@ -119,8 +124,8 @@ worker = mate.MATELightning(arr=arr,
                             kp=kp,
                             percentile=percentile,
                             win_length=win_length,
-                            polyorder=polyorder,
-                            len_time=len_time,
+                            smooth_func=smooth_func,
+                            smooth_param=smooth_param,
                             dt=dt)
 ```
 <br>
