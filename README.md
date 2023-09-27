@@ -128,9 +128,9 @@ worker = mate.MATELightning(arr=arr,
                             pairs=pairs,
                             kp=kp,
                             percentile=percentile,
-                            win_length=win_length,
                             smooth_func=smooth_func,
                             smooth_param=smooth_param,
+                            len_time=len_time,
                             dt=dt)
 ```
 <br>
