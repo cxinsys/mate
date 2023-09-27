@@ -42,6 +42,11 @@ MATE supports multi-GPU and multi-TPU Transfer Entropy calculations via PyTorch 
 
 If you're using PyTorch Lightning, use the MATELightning class. For more information, see [MATELightning class](#MATELightning-class) below
 
+```angular2html
+pip install lightning
+```
+<br>
+
 ### Install from GitHub repository
 First, clone the recent version of this repository.
 
