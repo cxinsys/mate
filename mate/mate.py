@@ -19,7 +19,7 @@ class MATE(object):
                  kp=0.5,
                  percentile=0,
                  smooth_func=None,
-                 smooth_param=None,
+                 smooth_param=None
                  ):
 
         self._kp = kp
@@ -40,8 +40,9 @@ class MATE(object):
 
     # calculate kernel width
 
-    def kernel_width(self, kp=None, percentile=None):
-        arr = self._arr
+    def kernel_width(self, arr=None, kp=None, percentile=None):
+        if arr is None:
+            arr = self._arr
 
         if percentile > 0:
             arr2 = arr.copy()
@@ -64,6 +65,8 @@ class MATE(object):
                             percentile=None,
                             smooth_func=None,
                             smooth_param=None,
+                            kw_smooth=True,
+                            data_smooth=True,
                             dtype=np.int32):
 
         if not kp:
@@ -80,25 +83,39 @@ class MATE(object):
 
         if self._bin_arr is None:
             arr = self._arr
-
-            kw = self.kernel_width(kp, percentile)
+            smooth_arr = None
 
             if smooth_func is not None:
-                print("Smooth Function Apply")
+                print(f"[Applying Smooth Function] Kernel smoothing: {kw_smooth}, Data smoothing: {data_smooth}")
                 if type(smooth_param)==tuple:
-                    arr = smooth_func(arr, *smooth_param)
+                    smooth_arr = smooth_func(arr, *smooth_param)
                 elif type(smooth_param)==dict:
-                    arr = smooth_func(arr, **smooth_param)
+                    smooth_arr = smooth_func(arr, **smooth_param)
                 else:
                     raise ValueError("Function parameter type must be tuple or dictionary")
                 # arr = savgol_filter(arr, win_length, polyorder)
+            else:
+                kw_smooth = False
+                data_smooth = False
 
-            mins = np.min(arr, axis=1)
-            # maxs = np.max(arr, axis=1)
+            if kw_smooth==True:
+                kw = self.kernel_width(smooth_arr, kp, percentile)
+            else:
+                kw = self.kernel_width(arr, kp, percentile)
 
-            self._bin_arr = arr.copy()
-            self._bin_arr = (self._bin_arr.T - mins) // kw
-            self._bin_arr = self._bin_arr.T.astype(dtype)
+            if data_smooth==True:
+                mins = np.min(smooth_arr, axis=1)
+                self._bin_arr = smooth_arr.copy()
+                self._bin_arr = (self._bin_arr.T - mins) // kw
+                self._bin_arr = self._bin_arr.T.astype(dtype)
+            else:
+                mins = np.min(arr, axis=1)
+                self._bin_arr = arr.copy()
+                self._bin_arr = (self._bin_arr.T - mins) // kw
+                self._bin_arr = self._bin_arr.T.astype(dtype)
+
+            del(arr)
+            del(smooth_arr)
 
         return self._bin_arr
 
@@ -114,6 +131,8 @@ class MATE(object):
             percentile=None,
             smooth_func=None,
             smooth_param=None,
+            kw_smooth=True,
+            data_smooth=False,
             ):
 
         if not device:
@@ -129,6 +148,10 @@ class MATE(object):
                 else:
                     self._device_ids = get_gpu_list()
             device_ids = self._device_ids
+
+        if type(device_ids) is int:
+            list_device_ids = [x for x in range(device_ids)]
+            device_ids = list_device_ids
 
         if not batch_size:
             if not self._batch_size:
@@ -164,7 +187,10 @@ class MATE(object):
         arr = self.create_binned_array(kp=kp,
                                        percentile=percentile,
                                        smooth_func=smooth_func,
-                                       smooth_param=smooth_param)
+                                       smooth_param=smooth_param,
+                                       kw_smooth=kw_smooth,
+                                       data_smooth=data_smooth,
+                                       )
 
         n_pairs = len(pairs)
 
