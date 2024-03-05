@@ -358,18 +358,29 @@ class MATE(object):
 
             te = TransferEntropy(device=device_name)
 
-            _process = Process(target=te.solve, args=(batch_size,
-                                                      pairs[i_beg:i_end],
-                                                      arr,
-                                                      n_bins,
-                                                      shm.name,
-                                                      np_shm,
-                                                      sem))
-            processes.append(_process)
-            _process.start()
+            if n_process == 1:
+                te.solve(batch_size,
+                          pairs[i_beg:i_end],
+                          arr,
+                          n_bins,
+                          shm.name,
+                          np_shm,
+                          sem)
 
-        for _process in processes:
-            _process.join()
+            else:
+                _process = Process(target=te.solve, args=(batch_size,
+                                                          pairs[i_beg:i_end],
+                                                          arr,
+                                                          n_bins,
+                                                          shm.name,
+                                                          np_shm,
+                                                          sem))
+                processes.append(_process)
+                _process.start()
+
+        if n_process != 1:
+            for _process in processes:
+                _process.join()
 
         print("Total processing elapsed time {}sec.".format(time.time() - t_beg_batch))
 

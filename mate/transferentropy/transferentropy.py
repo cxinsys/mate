@@ -129,16 +129,16 @@ class TransferEntropy(object):
             i_end = i_beg + batch_size
             inds_pair = self.am.arange(len(pairs[i_beg:i_end]))
 
-            # t_pairs = self.am.array(pairs[i_beg:i_end, 0], dtype=pairs.dtype)
-            # s_pairs = self.am.array(pairs[i_beg:i_end, 1], dtype=pairs.dtype)
+            t_pairs = self.am.array(pairs[i_beg:i_end, 0], dtype=pairs.dtype)
+            s_pairs = self.am.array(pairs[i_beg:i_end, 1], dtype=pairs.dtype)
 
             bin_arrs = self.am.array(bin_arrs, dtype=bin_arrs.dtype)
 
             tile_inds_pair = self.am.repeat(inds_pair, (len_time - 1)) # (pairs, time * kernel)
             tile_inds_pair = self.am.tile(tile_inds_pair, bin_arrs.shape[-1])
 
-            target_arr = self.am.take(bin_arrs, pairs[i_beg:i_end, 0], axis=0)
-            source_arr = self.am.take(bin_arrs, pairs[i_beg:i_end, 1], axis=0)
+            target_arr = self.am.take(bin_arrs, t_pairs, axis=0)
+            source_arr = self.am.take(bin_arrs, s_pairs, axis=0)
             vals = self.am.stack((target_arr[:, dt:, :],
                                   target_arr[:, :-dt, :],
                                   source_arr[:, :-dt, :]),
@@ -150,7 +150,7 @@ class TransferEntropy(object):
 
             # 허수 제거
             n_bins = self.am.array(n_bins, dtype=n_bins.dtype)
-            n_bins = self.am.take(n_bins, pairs[i_beg:i_end, 0], axis=0)
+            n_bins = self.am.take(n_bins, t_pairs, axis=0)
             n_bins = self.am.repeat(n_bins, (len_time - 1))
             n_bins = self.am.tile(n_bins, bin_arrs.shape[-1])
 
