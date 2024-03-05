@@ -5,6 +5,8 @@ import multiprocessing
 from multiprocessing import Process, shared_memory, Semaphore
 
 import numpy as np
+# from KDEpy import TreeKDE, FFTKDE
+from tqdm import tqdm
 
 from mate.transferentropy import TransferEntropy
 from mate.utils import get_gpu_list
@@ -17,12 +19,16 @@ class MATE(object):
                  pairs=None,
                  batch_size=None,
                  kp=0.5,
+                 num_kernels=3,
+                 method='interpolation',
                  percentile=0,
                  smooth_func=None,
                  smooth_param=None
                  ):
 
         self._kp = kp
+        self._num_kernels = num_kernels
+        self._method = method
         self._percentile = percentile
         self._batch_size = batch_size
 
@@ -119,7 +125,122 @@ class MATE(object):
 
         return self._bin_arr
 
-    # multiprocessing worker(calculate tenet)
+    def create_kde_array(self,
+                         kp=None,
+                         num_kernels=None,
+                         method='interpolation',
+                         dtype=np.int32
+                         ):
+
+        if not kp:
+            kp = self._kp
+        if not num_kernels:
+            num_kernels = self._num_kernels
+
+        arr = self._arr
+
+        stds = np.std(arr, axis=1, ddof=1)
+        mins = np.min(arr, axis=1)
+        maxs = np.max(arr, axis=1)
+
+        n_bins = np.ceil((maxs - mins) / stds).T.astype(dtype)
+
+        arrs = []
+
+        print(f"[Selected Method: {method.upper()}]")
+
+        if method=='interpolation':
+            bin_arr = ((arr.T - mins) / stds).T
+            mid_arr = (bin_arr[:, :-1] + bin_arr[:, 1:]) / 2
+
+            inter_arr = np.zeros((len(bin_arr), len(bin_arr[0])+len(mid_arr[0])))
+
+            inter_arr[:, ::2] = bin_arr
+            inter_arr[:, 1::2] = mid_arr
+
+            # Int Bin
+            # inter_arr = np.floor(inter_arr).astype(dtype)
+
+            # Float Bin
+            inter_arr = inter_arr.astype(np.float32)
+
+            inter_arr = np.where(inter_arr < 0, 0, inter_arr)
+            inter_arr = np.where(inter_arr >= n_bins, n_bins - 1, inter_arr)
+
+            print(f"Interpolation applied. Increased data length from {len(arr[0])} to {len(inter_arr[0])}.")
+
+            arrs = inter_arr[..., None]
+
+        elif method=='tagging':
+            print(f"Number of binned arrays for increasing pattern: {num_kernels}")
+
+            for i in range(num_kernels):
+                if i % 2 == 1: # odd
+                    bin_arr = np.floor((arr.T - (mins + ((i//2 + i%2) * kp * stds))) / stds).T.astype(dtype)
+                else:
+                    bin_arr = np.floor((arr.T - (mins - (i//2 * kp * stds))) / stds).T.astype(dtype)
+
+
+                bin_arr = np.where(bin_arr<0, 0, bin_arr)
+                bin_arr = np.where(bin_arr>=n_bins, n_bins-1, bin_arr)
+
+                bin_maxs = np.max(bin_arr, axis=1)
+
+                coeff = (i + 1) * 10 ** np.ceil(np.log10(bin_maxs))
+
+                bin_arr += coeff[..., None].astype(dtype)
+
+                arrs.append(bin_arr)
+
+            arrs = np.stack(arrs, axis=2)
+
+        elif method=='shifting':
+            print(f"[Num. Kernel: {num_kernels}, Kernel Width: {kp}]")
+
+            for i in range(num_kernels):
+                if i % 2 == 1:  # odd
+                    bin_arr = np.floor((arr.T - (mins + ((i // 2 + i % 2) * kp * stds))) / stds).T.astype(dtype) # pull
+                else:
+                    bin_arr = np.floor((arr.T - (mins - (i // 2 * kp * stds))) / stds).T.astype(dtype) # push
+
+                bin_arr = bin_arr.astype(dtype)
+
+                arrs.append(bin_arr)
+            arrs = np.stack(arrs, axis=2)
+
+        elif method == 'pushing':
+            print(f"[Kernel Width: {kp}]")
+
+            bin_arr = np.floor((arr.T - (mins - (kp * stds))) / stds).T.astype(dtype)
+
+            arrs = bin_arr[..., None]
+
+        elif method == 'pulling':
+            print(f"[Kernel Width: {kp}]")
+
+            bin_arr = np.floor((arr.T - (mins + (kp * stds))) / stds).T.astype(dtype)
+
+            arrs = bin_arr[..., None]
+
+        elif method == 'pushpull':
+            print(f"[Kernel Width: {kp}]")
+
+            bin_arr = np.floor((arr.T - (mins + (kp * stds))) / stds).T.astype(dtype)
+            arrs.append(bin_arr)
+            bin_arr = np.floor((arr.T - (mins - (kp * stds))) / stds).T.astype(dtype)
+            arrs.append(bin_arr)
+
+            arrs = np.stack(arrs, axis=2)
+
+        else:
+            print("Default Binning")
+            bin_arr = np.floor((arr.T - mins) / stds).T.astype(dtype)
+            arrs = bin_arr[..., None]
+
+        return arrs, n_bins
+
+
+    # multiprocessing worker(calculate te)
 
     def run(self,
             device=None,
@@ -128,6 +249,8 @@ class MATE(object):
             arr=None,
             pairs=None,
             kp=None,
+            num_kernels=None,
+            method=None,
             percentile=None,
             smooth_func=None,
             smooth_param=None,
@@ -172,6 +295,12 @@ class MATE(object):
         if not kp:
             kp = self._kp
 
+        if not num_kernels:
+            num_kernels = self._num_kernels
+
+        if not method:
+            method = self._method
+
         if not percentile:
             percentile = self._percentile
 
@@ -184,17 +313,21 @@ class MATE(object):
         self._arr = arr
         self._pairs = pairs
 
-        arr = self.create_binned_array(kp=kp,
-                                       percentile=percentile,
-                                       smooth_func=smooth_func,
-                                       smooth_param=smooth_param,
-                                       kw_smooth=kw_smooth,
-                                       data_smooth=data_smooth,
-                                       )
+        arr, n_bins = self.create_kde_array(kp=kp,
+                                    num_kernels=num_kernels,
+                                    method=method)
+        tmp_rm = np.zeros((len(arr), len(arr)), dtype=np.float32)
+
+        # arr = self.create_binned_array(kp=kp,
+        #                                percentile=percentile,
+        #                                smooth_func=smooth_func,
+        #                                smooth_param=smooth_param,
+        #                                kw_smooth=kw_smooth,
+        #                                data_smooth=data_smooth,
+        #                                )
+        # tmp_rm = np.zeros((len(arr), len(arr)), dtype=np.float32)
 
         n_pairs = len(pairs)
-
-        tmp_rm = np.zeros((len(arr), len(arr)), dtype=np.float32)
 
         n_process = len(device_ids)
         n_subpairs = math.ceil(n_pairs / n_process)
@@ -222,11 +355,13 @@ class MATE(object):
 
             device_name = device + ":" + str(device_ids[i])
             # print("tenet device: {}".format(device_name))
+
             te = TransferEntropy(device=device_name)
 
             _process = Process(target=te.solve, args=(batch_size,
                                                       pairs[i_beg:i_end],
                                                       arr,
+                                                      n_bins,
                                                       shm.name,
                                                       np_shm,
                                                       sem))

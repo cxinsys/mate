@@ -8,6 +8,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from mate.transferentropy import TELightning
+from mate import MATE
 from mate.dataset import PairDataSet
 
 # try:
@@ -17,7 +18,7 @@ from mate.dataset import PairDataSet
 #     from mate.models.layer import LightningTE
 #     from mate.dataset.dataset import PairDataSet
 
-class MATELightning(object):
+class MATELightning(MATE):
     def __init__(self,
                  arr=None,
                  pairs=None,

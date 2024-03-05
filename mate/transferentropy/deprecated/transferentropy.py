@@ -12,8 +12,7 @@ class TransferEntropy(object):
                  pairs=None,
                  n_pairs=None,
                  inds_pair=None,
-                 bin_arrs=None,
-                 n_bins=None,
+                 bin_arr=None,
                  len_time=None,
                  shm_name=None,
                  result_matrix=None,
@@ -28,16 +27,15 @@ class TransferEntropy(object):
         self._n_pairs = n_pairs
 
         self._inds_pair = inds_pair
-        self._bin_arrs = bin_arrs
-        self._n_bins = n_bins
+        self._bin_arr = bin_arr
 
         if inds_pair is not None:
             with self.am:
                 self._inds_pair = self.am.array(inds_pair, dtype=inds_pair.dtype)
 
-        if bin_arrs is not None:
+        if bin_arr is not None:
             with self.am:
-                self._bin_arrs = bin_arrs # list of binned arrays
+                self._bin_arr = self.am.array(bin_arr, dtype=bin_arr.dtype)
 
         self._len_time = len_time
 
@@ -54,8 +52,7 @@ class TransferEntropy(object):
     def solve(self,
               batch_size=None,
               pairs=None,
-              bin_arrs=None,
-              n_bins=None,
+              bin_arr=None,
               shm_name=None,
               result_matrix=None,
               sem=None,
@@ -85,20 +82,14 @@ class TransferEntropy(object):
                 self._inds_pair = inds_pair = np.arange(batch_size)
             inds_pair = self._inds_pair
 
-        if bin_arrs is None:
-            if self._bin_arrs is None:
-                raise ValueError("binned arrays should be defined")
-            bin_arrs = self._bin_arrs
-
-        if n_bins is None:
-            if self._n_bins is None:
-                raise ValueError("pairs should be defined")
-            n_bins = self._n_bins
+        if bin_arr is None:
+            if self._bin_arr is None:
+                raise ValueError("binned array should be defined")
+            bin_arr = self._bin_arr
 
         if not len_time:
             if not self._len_time:
-                self._len_time = len_time = bin_arrs.shape[1]
-                # self._len_time = len_time = bin_arrs[0].shape[1]
+                self._len_time = len_time = len(bin_arr[1])
             len_time = self._len_time
 
         if not shm_name:
@@ -129,41 +120,21 @@ class TransferEntropy(object):
             i_end = i_beg + batch_size
             inds_pair = self.am.arange(len(pairs[i_beg:i_end]))
 
-            # t_pairs = self.am.array(pairs[i_beg:i_end, 0], dtype=pairs.dtype)
-            # s_pairs = self.am.array(pairs[i_beg:i_end, 1], dtype=pairs.dtype)
+            tile_inds_pair = self.am.repeat(inds_pair, len_time-1)
 
-            bin_arrs = self.am.array(bin_arrs, dtype=bin_arrs.dtype)
+            bin_arr = self.am.array(bin_arr, dtype=bin_arr.dtype)
+            # pairs = self.am.array(pairs, dtype=pairs.dtype)
+            target_arr = self.am.take(bin_arr, pairs[i_beg:i_end, 0], axis=0)
+            source_arr = self.am.take(bin_arr, pairs[i_beg:i_end, 1], axis=0)
 
-            tile_inds_pair = self.am.repeat(inds_pair, (len_time - 1)) # (pairs, time * kernel)
-            tile_inds_pair = self.am.tile(tile_inds_pair, bin_arrs.shape[-1])
+            vals = self.am.stack((target_arr[:, dt:],
+                                  target_arr[:, :-dt],
+                                  source_arr[:, :-dt]),
+                                 axis=2)
 
-            target_arr = self.am.take(bin_arrs, pairs[i_beg:i_end, 0], axis=0)
-            source_arr = self.am.take(bin_arrs, pairs[i_beg:i_end, 1], axis=0)
-            vals = self.am.stack((target_arr[:, dt:, :],
-                                  target_arr[:, :-dt, :],
-                                  source_arr[:, :-dt, :]),
-                                  axis=3)
 
-            t_vals = self.am.transpose(vals, axes=(2, 0, 1, 3))
 
-            pair_vals = self.am.concatenate((tile_inds_pair[:, None], self.am.reshape(t_vals, (-1, 3))), axis=1)
-
-            # 허수 제거
-            n_bins = self.am.array(n_bins, dtype=n_bins.dtype)
-            n_bins = self.am.take(n_bins, pairs[i_beg:i_end, 0], axis=0)
-            n_bins = self.am.repeat(n_bins, (len_time - 1))
-            n_bins = self.am.tile(n_bins, bin_arrs.shape[-1])
-
-            left_bools = self.am.array(
-                self.am.logical_and(
-                    self.am.greater_equal(pair_vals[:, 2], 0),
-                    self.am.less(pair_vals[:, 2], n_bins)
-                )
-            )
-            left_inds = self.am.where(left_bools)[0]
-
-            pair_vals = self.am.take(pair_vals, left_inds, axis=0)
-            # 허수 제거
+            pair_vals = self.am.concatenate((tile_inds_pair[:, None], vals.reshape(-1, 3)), axis=1)
 
             uvals_xt1_xt_yt, cnts_xt1_xt_yt = self.am.unique(pair_vals, return_counts=True, axis=0)
 
@@ -189,12 +160,14 @@ class TransferEntropy(object):
             ind2ori_xt = self.am.argsort(ind_xt)
             cnts_xt = self.am.take(cnts_xt, ind2ori_xt)
 
-            # TE
-            p_xt1_xt_yt = self.am.divide(cnts_xt1_xt_yt, (len_time - 1) * bin_arrs.shape[-1])
-            # p_xt1_xt_yt = self.am.divide(cnts_xt1_xt_yt, (len_time - 1))
+            p_xt1_xt_yt = self.am.divide(cnts_xt1_xt_yt, (len_time - 1))
+            p_xt1_xt = self.am.divide(cnts_xt1_xt, (len_time - 1))
+            p_xt_yt = self.am.divide(cnts_xt_yt, (len_time - 1))
+            p_xt = self.am.divide(cnts_xt, (len_time - 1))
 
-            numer = self.am.multiply(cnts_xt1_xt_yt, cnts_xt)
-            denom = self.am.multiply(cnts_xt1_xt, cnts_xt_yt)
+
+            numer = self.am.multiply(p_xt1_xt_yt, p_xt)
+            denom = self.am.multiply(p_xt1_xt, p_xt_yt)
             fraction = self.am.divide(numer, denom)
             log_val = self.am.log2(fraction)
             entropies = self.am.multiply(p_xt1_xt_yt, log_val)
@@ -204,20 +177,6 @@ class TransferEntropy(object):
             final_bins = self.am.astype(x=final_bins, dtype='int32')
             entropy_final = self.am.bincount(final_bins, weights=entropies)
 
-            # # LocalTE
-            # numer = self.am.multiply(cnts_xt1_xt_yt, cnts_xt)
-            # denom = self.am.multiply(cnts_xt1_xt, cnts_xt_yt)
-            # fraction = self.am.divide(numer, denom)
-            # log_val = self.am.log2(fraction)
-            #
-            # uvals_tot, n_subuvals_tot = self.am.unique(uvals_xt1_xt_yt[:, 0], return_counts=True)
-            # final_bins = self.am.repeat(uvals_tot, n_subuvals_tot)
-            # final_bins = self.am.astype(x=final_bins, dtype='int32')
-            # entropies = self.am.bincount(final_bins, weights=log_val)
-            #
-            # entropy_final = self.am.divide(entropies, len_time - 1)
-
-            # end TE
             entropy_final = self.am.asnumpy(entropy_final)
 
             sem.acquire()

@@ -115,6 +115,36 @@ class NumpyModule(ArrayModule):
     def argsort(self, *args, **kwargs):
         return np.argsort(*args, **kwargs)
 
+    def astype(self, x, *args, **kwargs):
+        return x.astype(*args, **kwargs)
+
+    def tile(self, *args, **kwargs):
+        return np.tile(*args, **kwargs)
+
+    def where(self, *args, **kwargs):
+        return np.where(*args, **kwargs)
+
+    def transpose(self, *args, **kwargs):
+        return np.transpose(*args, **kwargs)
+
+    def reshape(self, *args, **kwargs):
+        return np.reshape(*args, **kwargs)
+
+    def greater(self, *args, **kwargs):
+        return np.greater(*args, **kwargs)
+
+    def greater_equal(self, *args, **kwargs):
+        return np.greater_equal(*args, **kwargs)
+
+    def less(self, *args, **kwargs):
+        return np.less(*args, **kwargs)
+
+    def less_equal(self, *args, **kwargs):
+        return np.less_equal(*args, **kwargs)
+
+    def logical_and(self, *args, **kwargs):
+        return np.logical_and(*args, **kwargs)
+
 
 class CuPyModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
@@ -218,6 +248,45 @@ class CuPyModule(NumpyModule):
         with cp.cuda.Device(self.device_id):
             return cp.argsort(*args, **kwargs)
 
+    def astype(self, x, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return x.astype(*args, **kwargs)
+
+    def tile(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.tile(*args, **kwargs)
+
+    def where(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.where(*args, **kwargs)
+
+    def transpose(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.transpose(*args, **kwargs)
+
+    def reshape(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.reshape(*args, **kwargs)
+    def greater(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.greater(*args, **kwargs)
+
+    def greater_equal(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.greater_equal(*args, **kwargs)
+
+    def less(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.less(*args, **kwargs)
+
+    def less_equal(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.less_equal(*args, **kwargs)
+
+    def logical_and(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.logical_and(*args, **kwargs)
+
 
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
@@ -276,3 +345,33 @@ class JaxModule(NumpyModule):
 
     def argsort(self, *args, **kwargs):
         return jnp.argsort(*args, **kwargs)
+
+    def astype(self, x, *args, **kwargs):
+        return x.astype(*args, **kwargs)
+
+    def argsort(self, *args, **kwargs):
+        return jnp.tile(*args, **kwargs)
+
+    def where(self, *args, **kwargs):
+        return jnp.where(*args, **kwargs)
+
+    def transpose(self, *args, **kwargs):
+        return jnp.transpose(*args, **kwargs)
+
+    def reshape(self, *args, **kwargs):
+        return jnp.reshape(*args, **kwargs)
+
+    def greater(self, *args, **kwargs):
+        return jnp.greater(*args, **kwargs)
+
+    def greater_equal(self, *args, **kwargs):
+        return jnp.greater_equal(*args, **kwargs)
+
+    def less(self, *args, **kwargs):
+        return jnp.less(*args, **kwargs)
+
+    def less_equal(self, *args, **kwargs):
+        return jnp.less_equal(*args, **kwargs)
+
+    def logical_and(self, *args, **kwargs):
+        return jnp.logical_and(*args, **kwargs)
