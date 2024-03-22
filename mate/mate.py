@@ -9,12 +9,13 @@ import numpy as np
 from tqdm import tqdm
 
 from mate.transferentropy import TransferEntropy
-from mate.utils import get_gpu_list
+from mate.utils import get_device_list
 
 class MATE(object):
     def __init__(self,
                  device=None,
                  device_ids=None,
+                 procs_per_device=None,
                  arr=None,
                  pairs=None,
                  batch_size=None,
@@ -37,6 +38,7 @@ class MATE(object):
 
         self._device = device
         self._device_ids = device_ids
+        self._procs_per_device = procs_per_device
 
         self._arr = arr
         self._pairs = pairs
@@ -65,66 +67,6 @@ class MATE(object):
         return kw
 
     # binning
-
-    def create_binned_array(self,
-                            kp=None,
-                            percentile=None,
-                            smooth_func=None,
-                            smooth_param=None,
-                            kw_smooth=True,
-                            data_smooth=True,
-                            dtype=np.int32):
-
-        if not kp:
-            kp = self._kp
-
-        if not percentile:
-            percentile = self._percentile
-
-        if not smooth_func:
-            smooth_func = self._smooth_func
-
-        if not smooth_param:
-            smooth_param = self._smooth_param
-
-        if self._bin_arr is None:
-            arr = self._arr
-            smooth_arr = None
-
-            if smooth_func is not None:
-                print(f"[Applying Smooth Function] Kernel smoothing: {kw_smooth}, Data smoothing: {data_smooth}")
-                if type(smooth_param)==tuple:
-                    smooth_arr = smooth_func(arr, *smooth_param)
-                elif type(smooth_param)==dict:
-                    smooth_arr = smooth_func(arr, **smooth_param)
-                else:
-                    raise ValueError("Function parameter type must be tuple or dictionary")
-                # arr = savgol_filter(arr, win_length, polyorder)
-            else:
-                kw_smooth = False
-                data_smooth = False
-
-            if kw_smooth==True:
-                kw = self.kernel_width(smooth_arr, kp, percentile)
-            else:
-                kw = self.kernel_width(arr, kp, percentile)
-
-            if data_smooth==True:
-                mins = np.min(smooth_arr, axis=1)
-                self._bin_arr = smooth_arr.copy()
-                self._bin_arr = (self._bin_arr.T - mins) // kw
-                self._bin_arr = self._bin_arr.T.astype(dtype)
-            else:
-                mins = np.min(arr, axis=1)
-                self._bin_arr = arr.copy()
-                self._bin_arr = (self._bin_arr.T - mins) // kw
-                self._bin_arr = self._bin_arr.T.astype(dtype)
-
-            del(arr)
-            del(smooth_arr)
-
-        return self._bin_arr
-
     def create_kde_array(self,
                          kp=None,
                          num_kernels=None,
@@ -245,6 +187,7 @@ class MATE(object):
     def run(self,
             device=None,
             device_ids=None,
+            procs_per_device=None,
             batch_size=None,
             arr=None,
             pairs=None,
@@ -269,8 +212,17 @@ class MATE(object):
                     self._device_ids = [0]
                     device_ids = [0]
                 else:
-                    self._device_ids = get_gpu_list()
+                    self._device_ids = get_device_list()
             device_ids = self._device_ids
+
+        if not procs_per_device:
+            if not self._procs_per_device:
+                self._procs_per_device = 1
+            procs_per_device = self._procs_per_device
+
+        if 'cpu' in device:
+            if procs_per_device > 1:
+                raise ValueError("CPU devices can only use one process per device")
 
         if type(device_ids) is int:
             list_device_ids = [x for x in range(device_ids)]
@@ -318,19 +270,13 @@ class MATE(object):
                                     method=method)
         tmp_rm = np.zeros((len(arr), len(arr)), dtype=np.float32)
 
-        # arr = self.create_binned_array(kp=kp,
-        #                                percentile=percentile,
-        #                                smooth_func=smooth_func,
-        #                                smooth_param=smooth_param,
-        #                                kw_smooth=kw_smooth,
-        #                                data_smooth=data_smooth,
-        #                                )
-        # tmp_rm = np.zeros((len(arr), len(arr)), dtype=np.float32)
-
         n_pairs = len(pairs)
 
         n_process = len(device_ids)
         n_subpairs = math.ceil(n_pairs / n_process)
+        n_procpairs = math.ceil(n_subpairs / procs_per_device)
+
+        sub_batch = math.ceil(batch_size / procs_per_device)
 
         multiprocessing.set_start_method('spawn', force=True)
         shm = shared_memory.SharedMemory(create=True, size=tmp_rm.nbytes)
@@ -347,29 +293,23 @@ class MATE(object):
                                                                                                  n_subpairs, batch_size))
         else:
             print("[GPU device selected]")
-            print("[Num. GPUS: {}, Num. Pairs: {}, Num. GPU_Pairs: {}, Batch Size: {}]".format(n_process, n_pairs,
-                                                                                               n_subpairs, batch_size))
+            print("[Num. GPUS: {}, Num. Pairs: {}, Num. GPU_Pairs: {}, Batch Size: {}, Process per device: {}]".format(n_process, n_pairs,
+                                                                                               n_subpairs, batch_size, procs_per_device))
 
         for i, i_beg in enumerate(range(0, n_pairs, n_subpairs)):
             i_end = i_beg + n_subpairs
 
-            device_name = device + ":" + str(device_ids[i])
-            # print("tenet device: {}".format(device_name))
+            for j, j_beg in enumerate(range(0, n_subpairs, n_procpairs)):
+                t_beg = i_beg + j_beg
+                t_end = t_beg + n_procpairs
 
-            te = TransferEntropy(device=device_name)
+                device_name = device + ":" + str(device_ids[i])
+                # print("tenet device: {}".format(device_name))
 
-            if n_process == 1:
-                te.solve(batch_size,
-                          pairs[i_beg:i_end],
-                          arr,
-                          n_bins,
-                          shm.name,
-                          np_shm,
-                          sem)
+                te = TransferEntropy(device=device_name)
 
-            else:
-                _process = Process(target=te.solve, args=(batch_size,
-                                                          pairs[i_beg:i_end],
+                _process = Process(target=te.solve, args=(sub_batch,
+                                                          pairs[t_beg:t_end],
                                                           arr,
                                                           n_bins,
                                                           shm.name,
@@ -378,9 +318,8 @@ class MATE(object):
                 processes.append(_process)
                 _process.start()
 
-        if n_process != 1:
-            for _process in processes:
-                _process.join()
+        for _process in processes:
+            _process.join()
 
         print("Total processing elapsed time {}sec.".format(time.time() - t_beg_batch))
 

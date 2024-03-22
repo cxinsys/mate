@@ -1,1 +1,1 @@
-from mate.utils.utils import get_gpu_list
+from mate.utils.utils import get_device_list

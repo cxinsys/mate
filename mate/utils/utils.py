@@ -10,7 +10,7 @@ try:
 except (ModuleNotFoundError, ImportError) as err:
     pass
 
-def get_gpu_list():
+def get_device_list():
     if 'cupy' in sys.modules:
         n_gpus = cupy.cuda.runtime.getDeviceCount()
     elif 'torch' in sys.modules:

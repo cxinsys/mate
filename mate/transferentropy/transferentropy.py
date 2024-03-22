@@ -121,18 +121,19 @@ class TransferEntropy(object):
                 self._dt = dt = 1
             dt = self._dt
 
+        bin_arrs = self.am.array(bin_arrs, dtype=bin_arrs.dtype)
+        g_pairs = self.am.array(pairs, dtype=pairs.dtype)
+
         for i_iter, i_beg in enumerate(range(0, n_pairs, batch_size)):
             t_beg_batch = time.time()
 
             print("[%s ID: %d, Batch #%d]" % (str(self.am.device).upper(), self.am.device_id, i_iter + 1))
 
             i_end = i_beg + batch_size
-            inds_pair = self.am.arange(len(pairs[i_beg:i_end]))
+            inds_pair = self.am.arange(len(g_pairs[i_beg:i_end]))
 
-            t_pairs = self.am.array(pairs[i_beg:i_end, 0], dtype=pairs.dtype)
-            s_pairs = self.am.array(pairs[i_beg:i_end, 1], dtype=pairs.dtype)
-
-            bin_arrs = self.am.array(bin_arrs, dtype=bin_arrs.dtype)
+            t_pairs = g_pairs[i_beg:i_end, 0]
+            s_pairs = g_pairs[i_beg:i_end, 1]
 
             tile_inds_pair = self.am.repeat(inds_pair, (len_time - 1)) # (pairs, time * kernel)
             tile_inds_pair = self.am.tile(tile_inds_pair, bin_arrs.shape[-1])
