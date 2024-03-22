@@ -145,6 +145,9 @@ class NumpyModule(ArrayModule):
     def logical_and(self, *args, **kwargs):
         return np.logical_and(*args, **kwargs)
 
+    def broadcast_to(self, *args, **kwargs):
+        return np.broadcast_to(*args, **kwargs)
+
 
 class CuPyModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
@@ -287,6 +290,10 @@ class CuPyModule(NumpyModule):
         with cp.cuda.Device(self.device_id):
             return cp.logical_and(*args, **kwargs)
 
+    def broadcast_to(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.broadcast_to(*args, **kwargs)
+
 
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
@@ -375,3 +382,6 @@ class JaxModule(NumpyModule):
 
     def logical_and(self, *args, **kwargs):
         return jnp.logical_and(*args, **kwargs)
+
+    def broadcast_to(self, *args, **kwargs):
+        return jnp.broadcast_to(*args, **kwargs)

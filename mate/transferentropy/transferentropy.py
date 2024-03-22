@@ -144,6 +144,7 @@ class TransferEntropy(object):
                                   source_arr[:, :-dt, :]),
                                   axis=3)
 
+
             t_vals = self.am.transpose(vals, axes=(2, 0, 1, 3))
 
             pair_vals = self.am.concatenate((tile_inds_pair[:, None], self.am.reshape(t_vals, (-1, 3))), axis=1)
@@ -176,8 +177,13 @@ class TransferEntropy(object):
             subuvals_xt1_xt, n_subuvals_xt1_xt = self.am.unique(uvals_xt1_xt_yt[:, :-1], return_counts=True, axis=0)
             subuvals_xt_yt, n_subuvals_xt_yt = self.am.unique(self.am.take(uvals_xt1_xt_yt, np.array([0, 2, 3]), axis=1), return_counts=True, axis=0)
             subuvals_xt, n_subuvals_xt = self.am.unique(self.am.take(uvals_xt1_xt_yt, np.array([0, 2]), axis=1), return_counts=True, axis=0)
-
+            
+            # s_time = time.time()
+            # tmp_cnts_xt1_xt = self.am.concatenate([self.am.broadcast_to(cnt, self.am.take(n_subuvals_xt1_xt, i).item()) for i, cnt in enumerate(cnts_xt1_xt)])
+            # print(time.time() - s_time)
+            
             cnts_xt1_xt = self.am.repeat(cnts_xt1_xt, n_subuvals_xt1_xt)
+            
 
             cnts_xt_yt = self.am.repeat(cnts_xt_yt, n_subuvals_xt_yt)
             ind_xt_yt = self.am.lexsort(self.am.take(uvals_xt1_xt_yt, np.array([3, 2, 0]), axis=1).T)
