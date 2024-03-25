@@ -78,31 +78,31 @@ worker = mate.MATE()
 
 #### parameters
 
-MATE goes through a binning process, which is sensitive to noise. 
-To work around this, you can use a smooth function like 
-scipy's [savgol_filter](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html#scipy-signal-savgol-filter).
+[//]: # (MATE goes through a binning process, which is sensitive to noise. )
+
+[//]: # (To work around this, you can use a smooth function like )
+
+[//]: # (scipy's [savgol_filter]&#40;https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html#scipy-signal-savgol-filter&#41;.)
 
 - **arr**: numpy array for transfer entropy calculation, required
 - **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
 - **device**: optional, default: 'cpu'
 - **device_ids**: optional, default: [0] (cpu), [list of whole gpu devices] (gpu) 
+- **procs_per_device**: The number of processes to create per device when using non 'cpu' devices, optional, default: 1
 - **batch_size**: required
 - **kp**: kernel percentile, optional, default: 0.5
-- **percentile**: data crop percentile, optional, default: 0
-- **smooth_func**: smoothe func, optional, default: None
-- **smooth_param**: smoothe func parameters, optional, tuple or dictionary, default: None
+- **df**: history length, optional, default: 1
+
 
 ```angular2html
 result_matrix = worker.run(arr=arr,
                            pairs=pairs,
                            device=device,
                            device_ids=device_ids,
+                           procs_per_device=procs_per_device,
                            batch_size=batch_size,
                            kp=kp,
-                           percentile=percentile,
-                           smooth_func=smooth_func, (ex. smooth_func=savgol_filter)
-                           smooth_param=smooth_param (ex. smooth_param={'window_length': 10,
-                                                                        'polyorder': 3})
+                           dt=dt,
                            )
 ```
 
