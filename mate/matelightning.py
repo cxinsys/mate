@@ -23,6 +23,8 @@ class MATELightning(MATE):
                  arr=None,
                  pairs=None,
                  kp=0.5,
+                 num_kernels=1,
+                 method='pushing',
                  percentile=0,
                  smooth_func=None,
                  smooth_param=None,
@@ -31,12 +33,10 @@ class MATELightning(MATE):
         super().__init__()
 
         self._pairs = pairs
-
-        self._bin_arr = self.create_binned_array(arr=arr,
-                                                 kp=kp,
-                                                 percentile=percentile,
-                                                 smooth_func=smooth_func,
-                                                 smooth_param=smooth_param,)
+        self._arr = arr
+        self._bin_arr = self.create_kde_array(kp=kp,
+                                              num_kernels=num_kernels,
+                                              method=method)
 
         self._devices = None
 
@@ -55,30 +55,6 @@ class MATELightning(MATE):
         kw[kw == 0] = 1
 
         return kw
-    def create_binned_array(self,
-                            arr=None,
-                            kp=None,
-                            percentile=None,
-                            smooth_func=None,
-                            smooth_param=None,
-                            dtype=np.int32):
-
-        kw = self.kernel_width(arr, kp, percentile)
-
-        if smooth_func is not None:
-            print("Smooth Function Apply")
-            if type(smooth_param) == tuple:
-                arr = smooth_func(arr, *smooth_param)
-            elif type(smooth_param) == dict:
-                arr = smooth_func(arr, **smooth_param)
-            else:
-                raise ValueError("Function parameter type must be tuple or dictionary")
-
-        # arr = savgol_filter(arr, win_length, polyorder)
-        mins = np.min(arr, axis=1)
-        arr = (arr.T - mins) // kw
-
-        return arr.T.astype(dtype)
 
     def custom_collate(self, batch):
         n_devices = None

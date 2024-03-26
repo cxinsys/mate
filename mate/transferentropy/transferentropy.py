@@ -59,10 +59,10 @@ class TransferEntropy(object):
               shm_name=None,
               result_matrix=None,
               sem=None,
+              dt=1,
               n_pairs=None,
               inds_pair=None,
               len_time=None,
-              dt=1
               ):
 
         if not batch_size:

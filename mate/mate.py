@@ -20,11 +20,12 @@ class MATE(object):
                  pairs=None,
                  batch_size=None,
                  kp=0.5,
-                 num_kernels=3,
-                 method='interpolation',
+                 num_kernels=1,
+                 method='pushing',
                  percentile=0,
                  smooth_func=None,
-                 smooth_param=None
+                 smooth_param=None,
+                 dt=1
                  ):
 
         self._kp = kp
@@ -45,6 +46,8 @@ class MATE(object):
 
         self._bin_arr = None
         self._result_matrix = None
+
+        self._dt = dt
 
     # calculate kernel width
 
@@ -199,6 +202,7 @@ class MATE(object):
             smooth_param=None,
             kw_smooth=True,
             data_smooth=False,
+            dt=1
             ):
 
         if not device:
@@ -252,15 +256,17 @@ class MATE(object):
 
         if not method:
             method = self._method
+        if not dt:
+            dt = self._dt
 
-        if not percentile:
-            percentile = self._percentile
-
-        if not smooth_func:
-            smooth_func = self._smooth_func
-
-        if not smooth_param:
-            smooth_param = self._smooth_param
+        # if not percentile:
+        #     percentile = self._percentile
+        #
+        # if not smooth_func:
+        #     smooth_func = self._smooth_func
+        #
+        # if not smooth_param:
+        #     smooth_param = self._smooth_param
 
         self._arr = arr
         self._pairs = pairs
@@ -314,7 +320,8 @@ class MATE(object):
                                                           n_bins,
                                                           shm.name,
                                                           np_shm,
-                                                          sem))
+                                                          sem,
+                                                          dt))
                 processes.append(_process)
                 _process.start()
 
