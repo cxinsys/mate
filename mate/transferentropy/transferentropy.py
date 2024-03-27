@@ -170,15 +170,21 @@ class TransferEntropy(object):
             uvals_xt1_xt_yt, cnts_xt1_xt_yt = self.am.unique(pair_vals, return_counts=True, axis=0)
 
             uvals_xt1_xt, cnts_xt1_xt = self.am.unique(pair_vals[:, :-1], return_counts=True, axis=0)
+            uvals_xt1_xt = None
             uvals_xt_yt, cnts_xt_yt = self.am.unique(self.am.take(pair_vals, np.array([0, 2, 3]), axis=1),
                                                      return_counts=True, axis=0)
+            uvals_xt_yt = None
             uvals_xt, cnts_xt = self.am.unique(self.am.take(pair_vals, np.array([0, 2]), axis=1), return_counts=True,
                                                axis=0)
+            uvals_xt = None
 
             subuvals_xt1_xt, n_subuvals_xt1_xt = self.am.unique(uvals_xt1_xt_yt[:, :-1], return_counts=True, axis=0)
+            subuvals_xt1_xt = None
             subuvals_xt_yt, n_subuvals_xt_yt = self.am.unique(self.am.take(uvals_xt1_xt_yt, np.array([0, 2, 3]), axis=1), return_counts=True, axis=0)
+            subuvals_xt_yt = None
             subuvals_xt, n_subuvals_xt = self.am.unique(self.am.take(uvals_xt1_xt_yt, np.array([0, 2]), axis=1), return_counts=True, axis=0)
-            
+            subuvals_xt = None
+
             # s_time = time.time()
             # tmp_cnts_xt1_xt = self.am.concatenate([self.am.broadcast_to(cnt, self.am.take(n_subuvals_xt1_xt, i).item()) for i, cnt in enumerate(cnts_xt1_xt)])
             # print(time.time() - s_time)
