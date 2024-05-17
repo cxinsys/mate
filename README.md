@@ -115,9 +115,6 @@ result_matrix = worker.run(arr=arr,
 - **arr**: numpy array for transfer entropy calculation, required
 - **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
 - **kp**: kernel percentile, optional, default: 0.5
-- **percentile**: data crop percentile, optional, default: 0
-- **smooth_func**: smoothe func, optional, default: None
-- **smooth_param**: smoothe func parameters, optional, tuple or dictionary, default: None
 - **len_time**: total length of expression array, optional, default: column length of array
 - **dt**: history length of expression array, optional, default: 1
 
@@ -127,9 +124,6 @@ import mate
 worker = mate.MATELightning(arr=arr,
                             pairs=pairs,
                             kp=kp,
-                            percentile=percentile,
-                            smooth_func=smooth_func,
-                            smooth_param=smooth_param,
                             len_time=len_time,
                             dt=dt)
 ```
