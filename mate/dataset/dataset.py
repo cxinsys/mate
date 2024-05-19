@@ -17,7 +17,7 @@ class PairDataSet(Dataset):
                  pairs=None):
         self._arr = arr
 
-        if pairs==None:
+        if pairs is None:
             self._pairs = self.create_pairs(arr=arr)
         else:
             self._pairs = pairs
@@ -31,5 +31,5 @@ class PairDataSet(Dataset):
 
     def __getitem__(self, item):
         # return torch.Tensor(self._pairs[item])
-
-        return self._arr, self._pairs[item]
+        return self._pairs[item]
+        # return self._arr, self._pairs[item]

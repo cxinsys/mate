@@ -19,71 +19,92 @@ def lexsort(keys, dim=-1):
     return idx
 
 class TELightning(pl.LightningModule):
-    def __init__(self, len_time=None, dt=1):
+    def __init__(self, arr=None, len_time=None, dt=1, n_bins=None):
         super().__init__()
+        self._arr = arr
         self._len_time = len_time
         self._dt = dt
-        self._result_matrix = None
-        self._batch_predict_ef = []
-        self._batch_predict_pairs = []
-    def forward(self, arr, pairs):
+        self._n_bins = n_bins
+
         self._result_matrix = np.zeros((len(arr), len(arr)), dtype=np.float32)
 
+        self._batch_predict_ef = []
+        self._batch_predict_pairs = []
+    def forward(self, pairs):
+        arr = self._arr
+
+        arr = torch.tensor(arr, dtype=torch.float32, device=self.device)
+        pairs = torch.tensor(pairs, dtype=torch.int32, device=self.device)
+
         if self._len_time is None:
-            self._len_time = len(arr[1])
+            self._len_time = arr.shape[1]
 
-        arr = torch.tensor(arr, dtype=torch.float32)
-        pairs = torch.tensor(pairs, dtype=torch.int32)
+        inds_pair = torch.arange(len(pairs)).to(self.device)
 
-        # print("array shape: ", arr.shape)
-        # print("pairs shape: ", pairs.shape)
+        t_pairs = pairs[:, 0]
+        s_pairs = pairs[:, 1]
 
-        inds_pair = torch.arange(len(pairs))
         tile_inds_pair = torch.repeat_interleave(inds_pair, self._len_time-1)
+        tile_inds_pair = torch.tile(tile_inds_pair, (arr.shape[-1],))
 
-        # arr = torch.tensor(arr, dtype=arr.dtype)
-        target_arr = torch.index_select(arr, 0, pairs[:, 0])
-        source_arr = torch.index_select(arr, 0, pairs[:, 1])
+        target_arr = torch.index_select(arr, 0, t_pairs)
+        source_arr = torch.index_select(arr, 0, s_pairs)
+        vals = torch.stack((target_arr[:, self._dt:, :],
+                           target_arr[:, :-self._dt, :],
+                           source_arr[:, :-self._dt, :]),
+                           dim=3)
 
-        vals = torch.stack((target_arr[:, self._dt:],
-                           target_arr[:, :-self._dt],
-                           source_arr[:, :-self._dt]),
-                           dim=2)
+        t_vals = torch.permute(vals, dims=(2, 0, 1, 3))
 
-        pair_vals = torch.concatenate((tile_inds_pair[:, None], torch.reshape(vals, (-1, 3))), dim=1)
+        pair_vals = torch.concatenate((tile_inds_pair[:, None], torch.reshape(t_vals, (-1, 3))), dim=1)
+
+        n_bins = torch.tensor(self._n_bins, dtype=torch.int32, device=self.device)
+        n_bins = torch.index_select(n_bins, 0, t_pairs)
+        n_bins = torch.repeat_interleave(n_bins, (self._len_time - 1))
+        n_bins = torch.tile(n_bins, (arr.shape[-1],))
+
+        left_bools = torch.tensor(
+            torch.logical_and(
+                torch.greater_equal(pair_vals[:, 2], 0),
+                torch.less(pair_vals[:, 2], n_bins)
+            )
+        )
+        left_inds = torch.where(left_bools)[0]
+
+        pair_vals = torch.index_select(pair_vals, 0, left_inds)
 
         uvals_xt1_xt_yt, cnts_xt1_xt_yt = torch.unique(pair_vals, return_counts=True, dim=0)
         uvals_xt1_xt, cnts_xt1_xt = torch.unique(pair_vals[:, :-1], return_counts=True, dim=0)
-        uvals_xt_yt, cnts_xt_yt = torch.unique(torch.index_select(pair_vals, 1, torch.tensor([0, 2, 3])),
+        uvals_xt_yt, cnts_xt_yt = torch.unique(torch.index_select(pair_vals, 1, torch.tensor([0, 2, 3], device=self.device)),
                                                  return_counts=True, dim=0)
-        uvals_xt, cnts_xt = torch.unique(torch.index_select(pair_vals, 1, torch.tensor([0, 2])),
+        uvals_xt, cnts_xt = torch.unique(torch.index_select(pair_vals, 1, torch.tensor([0, 2], device=self.device)),
                                                return_counts=True, dim=0)
 
         subuvals_xt1_xt, n_subuvals_xt1_xt = torch.unique(uvals_xt1_xt_yt[:, :-1], return_counts=True, dim=0)
-        subuvals_xt_yt, n_subuvals_xt_yt = torch.unique(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([0, 2, 3])),
+        subuvals_xt_yt, n_subuvals_xt_yt = torch.unique(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([0, 2, 3], device=self.device)),
                                                           return_counts=True, dim=0)
-        subuvals_xt, n_subuvals_xt = torch.unique(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([0, 2])),
+        subuvals_xt, n_subuvals_xt = torch.unique(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([0, 2], device=self.device)),
                                                     return_counts=True, dim=0)
 
         cnts_xt1_xt = torch.repeat_interleave(cnts_xt1_xt, n_subuvals_xt1_xt)
 
         cnts_xt_yt = torch.repeat_interleave(cnts_xt_yt, n_subuvals_xt_yt)
-        ind_xt_yt = lexsort(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([3, 2, 0])).T)
+        ind_xt_yt = lexsort(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([3, 2, 0], device=self.device)).T)
         ind2ori_xt_yt = torch.argsort(ind_xt_yt)
         cnts_xt_yt = torch.take(cnts_xt_yt, ind2ori_xt_yt)
 
         cnts_xt = torch.repeat_interleave(cnts_xt, n_subuvals_xt)
-        ind_xt = lexsort(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([2, 0])).T)
+        ind_xt = lexsort(torch.index_select(uvals_xt1_xt_yt, 1, torch.tensor([2, 0], device=self.device)).T)
         ind2ori_xt = torch.argsort(ind_xt)
         cnts_xt = torch.take(cnts_xt, ind2ori_xt)
 
-        p_xt1_xt_yt = torch.divide(cnts_xt1_xt_yt, (self._len_time - 1))
-        p_xt1_xt = torch.divide(cnts_xt1_xt, (self._len_time - 1))
-        p_xt_yt = torch.divide(cnts_xt_yt, (self._len_time - 1))
-        p_xt = torch.divide(cnts_xt, (self._len_time - 1))
+        p_xt1_xt_yt = torch.divide(cnts_xt1_xt_yt, (self._len_time - 1) * arr.shape[-1])
+        # p_xt1_xt = torch.divide(cnts_xt1_xt, (self._len_time - 1))
+        # p_xt_yt = torch.divide(cnts_xt_yt, (self._len_time - 1))
+        # p_xt = torch.divide(cnts_xt, (self._len_time - 1))
 
-        numer = torch.multiply(p_xt1_xt_yt, p_xt)
-        denom = torch.multiply(p_xt1_xt, p_xt_yt)
+        numer = torch.multiply(cnts_xt1_xt_yt, cnts_xt)
+        denom = torch.multiply(cnts_xt1_xt, cnts_xt_yt)
         fraction = torch.divide(numer, denom)
         log_val = torch.log2(fraction)
         entropies = torch.multiply(p_xt1_xt_yt, log_val)
@@ -96,8 +117,10 @@ class TELightning(pl.LightningModule):
         return entropy_final, pairs
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        arr, pairs = batch
-        ef, pairs = self(arr, pairs)
+        pairs = batch
+        # print(pairs.shape)
+        # print(pairs)
+        ef, pairs = self(pairs)
         self._batch_predict_ef.append(ef)
         self._batch_predict_pairs.append(pairs)
         return ef, pairs
@@ -125,7 +148,16 @@ class TELightning(pl.LightningModule):
         return self._result_matrix
 
 if __name__ == "__main__":
-    x = np.randint(-10, 10, (16, 200), dtype=np.int16)  # (B, C, N)
+    from torch.utils.data import Dataset, DataLoader
+    from mate.dataset import PairDataSet
+
+    x = np.random.randint(-10, 10, (16, 200), dtype=np.int16)  # (B, C, N)
+
+    stds = np.std(x, axis=1, ddof=1)
+    mins = np.min(x, axis=1)
+    maxs = np.max(x, axis=1)
+
+    n_bins = np.ceil((maxs - mins) / stds).T.astype(dtype)
 
     pairs = np.array([[0, 1],
                       [0, 2],
@@ -133,17 +165,33 @@ if __name__ == "__main__":
     print(x.shape)
     print(pairs.shape)
     
-    model = TELightning()
+    model = TELightning(arr=x, len_time=200, dt=1, n_bins=n_bins)
 
     print(model)
-    t_beg = time.time()
-    y, pairs = model(x, pairs)
 
-    t_end = time.time()
-    # print(y)
-    print(y)
-    print("Time elapsed:", t_end - t_beg)
-    #
+    def custom_collate(batch):
+        n_devices = None
+
+        pairs = [item[1] for item in batch]
+        # arr = batch[0][0]
+
+        return np.stack(pairs)
+
+    dset_pair = PairDataSet(arr=x, pairs=pairs)
+
+    dloader_pair = DataLoader(dset_pair,
+                              batch_size=32,
+                              shuffle=False,
+                              num_workers=0,
+                              collate_fn=custom_collate)
+
+    trainer = L.Trainer(accelerator='gpu',
+                        devices=1,
+                        num_nodes=1,
+                        strategy="auto")
+
+    trainer.predict(model, dloader_pair)
+
     # from pytorch_model_summary import summary
     #
     # print(summary(model, x, show_input=False))

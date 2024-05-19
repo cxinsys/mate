@@ -34,15 +34,13 @@ class MATELightning(MATE):
 
         self._pairs = pairs
         self._arr = arr
-        self._bin_arr = self.create_kde_array(kp=kp,
-                                              num_kernels=num_kernels,
-                                              method=method)
-
+        self._bin_arr, self._n_bins = self.create_kde_array(kp=kp,
+                                                              num_kernels=num_kernels,
+                                                              method=method)
         self._devices = None
 
-        self.model = TELightning(len_time=len_time, dt=dt)
+        self.model = TELightning(arr=self._bin_arr, len_time=len_time, dt=dt, n_bins=self._n_bins)
         self.dset_pair = PairDataSet(arr=self._bin_arr, pairs=self._pairs)
-
 
     def kernel_width(self, arr, kp=None, percentile=None):
         if percentile > 0:
@@ -64,10 +62,11 @@ class MATELightning(MATE):
         elif type(self._devices)==list:
             n_devices = len(self._devices)
 
-        pairs = [item[1] for item in batch]
-        arr = batch[0][0]
+        pairs = [item for item in batch]
 
-        return arr, np.stack(pairs)
+        # arr = batch[0][0]
+
+        return np.stack(pairs)
 
     def run(self,
             device=None,
@@ -85,12 +84,15 @@ class MATELightning(MATE):
 
         trainer = L.Trainer(accelerator=device,
                             devices=devices,
+                            num_nodes=1,
                             strategy="auto")
+
 
         trainer.predict(self.model, dloader_pair)
 
         if trainer.is_global_zero:
             results = self.model.return_result()
+
             return results
 
 
