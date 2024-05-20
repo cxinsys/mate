@@ -12,6 +12,23 @@ try:
 except (ModuleNotFoundError, ImportError) as err:
     pass
 
+try:
+    import torch
+except (ModuleNotFoundError, ImportError) as err:
+    pass
+
+TORCH_DTYPES = {
+    'int16' : torch.int16,
+    'int32' : torch.int32,
+    'float16' : torch.float16,
+    'float32': torch.float32,
+    'float64': torch.float64,
+    np.int16 : torch.int16,
+    np.int32 : torch.int32,
+    np.float16 : torch.float16,
+    np.float32: torch.float32,
+    np.float64: torch.float64
+}
 
 def parse_device(device):
     if device is None:
@@ -25,9 +42,9 @@ def parse_device(device):
         _device, _device_id = device.split(":")
         _device_id = int(_device_id)
 
-    if _device not in ["cpu", "gpu", "cuda", "cupy", "jax"]:
+    if _device not in ["cpu", "gpu", "cuda", "cupy", "jax", "torch"]:
         raise ValueError("device should be one of 'cpu', " \
-                         "'gpu', or 'cuda', 'cupy', 'jax' not %s" % (device))
+                         "'gpu', or 'cuda', 'cupy', 'jax' and 'torch' not %s" % (device))
 
     return _device, _device_id
 
@@ -35,10 +52,12 @@ def parse_device(device):
 def get_array_module(device):
     _device, _device_id = parse_device(device)
 
-    if "gpu" in _device or "cuda" in _device or "cupy" in _device:
-        return CuPyModule(_device, _device_id)
+    if "gpu" in _device or "cuda" in _device or "torch" in _device:
+        return TorchModule(_device, _device_id)
     elif "jax" in _device:
         return JaxModule(_device, _device_id)
+    elif "cupy" in _device:
+        return CuPyModule(_device, _device_id)
     else:
         return NumpyModule(_device, _device_id)
 
@@ -356,7 +375,7 @@ class JaxModule(NumpyModule):
     def astype(self, x, *args, **kwargs):
         return x.astype(*args, **kwargs)
 
-    def argsort(self, *args, **kwargs):
+    def tile(self, *args, **kwargs):
         return jnp.tile(*args, **kwargs)
 
     def where(self, *args, **kwargs):
@@ -385,3 +404,115 @@ class JaxModule(NumpyModule):
 
     def broadcast_to(self, *args, **kwargs):
         return jnp.broadcast_to(*args, **kwargs)
+
+class TorchModule(NumpyModule):
+    def __init__(self, device=None, device_id=None):
+        super().__init__(device, device_id)
+
+    def __enter__(self):
+        return self._device.__enter__()
+
+    def __exit__(self, *args, **kwargs):
+        return self._device.__exit__(*args, **kwargs)
+
+    def array(self, *args, **kwargs):
+        if len(args) == 2:
+            return torch.tensor(args[0], dtype=TORCH_DTYPES[str(args[1])], device='cuda:' + str(self.device_id))
+        else:
+            return torch.tensor(args[0], device='cuda:' + str(self.device_id))
+    def take(self, *args, **kwargs):
+        if len(args)+len(kwargs) == 3:
+            return torch.index_select(args[0], kwargs['axis'], args[1])
+        else:
+            return torch.take(args[0], args[1])
+
+    def repeat(self, *args, **kwargs):
+        return torch.repeat_interleave(*args, **kwargs)
+
+    def concatenate(self, *args, **kwargs):
+        val_dim = kwargs.pop('axis')
+        return torch.concatenate(*args, **kwargs, dim=val_dim)
+
+    def stack(self, *args, **kwargs):
+        val_dim = kwargs.pop('axis')
+        return torch.stack(*args, **kwargs, dim=val_dim)
+
+    def unique(self, *args, **kwargs):
+        if len(kwargs) == 2:
+            val_dim = kwargs.pop('axis')
+            return torch.unique(*args, **kwargs, dim=val_dim)
+        else:
+            return torch.unique(*args, **kwargs)
+
+    # def zeros(self, *args, **kwargs):
+    #     return jnp.zeros(*args, **kwargs)
+
+    def lexsort(self, keys, dim=-1):
+        if keys.ndim < 2:
+            raise ValueError(f"keys must be at least 2 dimensional, but {keys.ndim=}.")
+        if len(keys) == 0:
+            raise ValueError(f"Must have at least 1 key, but {len(keys)=}.")
+
+        idx = keys[0].argsort(dim=dim, stable=True)
+        for k in keys[1:]:
+            idx = idx.index_select(dim, k.index_select(dim, idx).argsort(dim=dim, stable=True))
+
+        return idx
+
+    def arange(self, *args, **kwargs):
+        return torch.arange(*args, **kwargs, device='cuda:' + str(self.device_id))
+
+    def multiply(self, *args, **kwargs):
+        return torch.multiply(*args, **kwargs)
+
+    def subtract(self, *args, **kwargs):
+        return torch.subtract(*args, **kwargs)
+
+    def divide(self, *args, **kwargs):
+        return torch.divide(*args, **kwargs)
+
+    def log2(self, *args, **kwargs):
+        return torch.log2(*args, **kwargs)
+
+    def bincount(self, *args, **kwargs):
+        return torch.bincount(*args, **kwargs)
+
+    def asnumpy(self, *args, **kwargs):
+        return args[0].detach().cpu().numpy()
+
+    def argsort(self, *args, **kwargs):
+        return torch.argsort(*args, **kwargs)
+
+    def astype(self, x, dtype):
+        return x.to(TORCH_DTYPES[dtype])
+
+    def tile(self, *args, **kwargs):
+        return torch.tile(args[0], (args[1],))
+
+    def where(self, *args, **kwargs):
+        return torch.where(*args, **kwargs)
+
+    def transpose(self, *args, **kwargs):
+        val_dim = kwargs.pop('axes')
+        return torch.permute(*args, **kwargs, dims=val_dim)
+
+    def reshape(self, *args, **kwargs):
+        return torch.reshape(*args, **kwargs)
+
+    def greater(self, *args, **kwargs):
+        return torch.greater(*args, **kwargs)
+
+    def greater_equal(self, *args, **kwargs):
+        return torch.greater_equal(*args, **kwargs)
+
+    def less(self, *args, **kwargs):
+        return torch.less(*args, **kwargs)
+
+    def less_equal(self, *args, **kwargs):
+        return torch.less_equal(*args, **kwargs)
+
+    def logical_and(self, *args, **kwargs):
+        return torch.logical_and(*args, **kwargs)
+
+    def broadcast_to(self, *args, **kwargs):
+        return torch.broadcast_to(*args, **kwargs)
