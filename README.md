@@ -10,11 +10,13 @@
 MATE requires following backend-specific dependencies to be installed:
 
 <br>
+
 - PyTorch: [Installing PyTorch](https://pytorch.org/get-started/locally/)
 
 PyTorch is default backend module of MATE. Also, it will be used if you set the device parameter to 'gpu' or 'cuda'.
 
 <br>
+
 - CuPy: [Installing CuPy from Conda-Forge with cudatoolkit](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge)
 
 Install Cupy from Conda-Forge with cudatoolkit supported by your driver
