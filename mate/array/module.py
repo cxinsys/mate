@@ -419,7 +419,8 @@ class TorchModule(NumpyModule):
         if len(args) == 2:
             return torch.tensor(args[0], dtype=TORCH_DTYPES[str(args[1])], device='cuda:' + str(self.device_id))
         else:
-            return torch.tensor(args[0], device='cuda:' + str(self.device_id))
+            return torch.tensor(args[0], dtype=torch.int32, device='cuda:' + str(self.device_id))
+
     def take(self, *args, **kwargs):
         if len(args)+len(kwargs) == 3:
             return torch.index_select(args[0], kwargs['axis'], args[1])
