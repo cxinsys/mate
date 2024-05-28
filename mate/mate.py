@@ -261,7 +261,6 @@ class MATE(object):
 
         # if not percentile:
         #     percentile = self._percentile
-        #
         # if not smooth_func:
         #     smooth_func = self._smooth_func
         #
