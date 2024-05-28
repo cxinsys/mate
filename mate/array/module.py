@@ -352,57 +352,13 @@ class JaxModule(NumpyModule):
         return jnp.stack(*args, **kwargs)
 
     def unique(self, array, return_counts=False, axis=None):
-        if axis is None:
-            return jnp.unique(array, return_counts=return_counts)
-        else:
-            if len(array.shape) != 2:
-                raise ValueError("Input array must be 2D")
-            # s = time.time()
-            sortarr = array[self.lexsort(array.T[::-1])]
-            # print(time.time() - s)
-            mask = jnp.empty(array.shape[0], dtype=bool)
-            # mask[0] = True
-            mask = mask.at[0].set(True)
-            # mask[1:] = jnp.any(sortarr[1:] != sortarr[:-1], axis=1)
-            mask = mask.at[1:].set(jnp.any(sortarr[1:] != sortarr[:-1], axis=1))
-
-            ret = sortarr[mask]
-            if not return_counts:
-                return ret
-
-            ret = ret,
-            if return_counts:
-                nonzero = jnp.nonzero(mask)[0]
-                idx = jnp.empty((nonzero.size + 1,), nonzero.dtype)
-                # idx[:-1] = nonzero
-                idx = idx.at[:-1].set(nonzero)
-                # idx[-1] = mask.size
-                idx = idx.at[-1].set(mask.size)
-                ret += idx[1:] - idx[:-1],
-                # print(time.time() - s)
-
-
-            return ret
-        # return jnp.unique(*args, **kwargs)
+        return jnp.unique(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
         return jnp.zeros(*args, **kwargs)
 
-    # def lexsort(self, *args, **kwargs):
-    #     return jnp.lexsort(*args, **kwargs)
-
-    def lexsort(self, keys, axis=-1):
-        if len(keys.shape) < 2:
-            raise ValueError(f"keys must be at least 2 dimensional, but {len(keys.shape)=}.")
-        if len(keys) == 0:
-            raise ValueError(f"Must have at least 1 key, but {len(keys)=}.")
-
-        idx = jnp.argsort(keys[0])
-        for k in keys[1:]:
-            # idx = idx.index_select(dim, k.index_select(dim, idx).argsort(dim=dim, stable=True))
-            idx = jnp.take(idx, jnp.argsort(jnp.take(k, idx, axis=axis), axis=axis), axis=axis)
-
-        return idx
+    def lexsort(self, *args, **kwargs):
+        return jnp.lexsort(*args, **kwargs)
 
     def arange(self, *args, **kwargs):
         return device_put(jnp.arange(*args, **kwargs), jax.devices()[self.device_id])
