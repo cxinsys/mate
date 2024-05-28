@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 try:
@@ -9,6 +11,7 @@ try:
     import jax
     from jax import device_put
     import jax.numpy as jnp
+    import jax.lax
 except (ModuleNotFoundError, ImportError) as err:
     pass
 
@@ -16,6 +19,12 @@ try:
     import torch
 except (ModuleNotFoundError, ImportError) as err:
     pass
+
+try:
+    import tensorflow as tf
+except (ModuleNotFoundError, ImportError) as err:
+    pass
+
 
 TORCH_DTYPES = {
     'int16' : torch.int16,
@@ -42,9 +51,9 @@ def parse_device(device):
         _device, _device_id = device.split(":")
         _device_id = int(_device_id)
 
-    if _device not in ["cpu", "gpu", "cuda", "cupy", "jax", "torch"]:
-        raise ValueError("device should be one of 'cpu', " \
-                         "'gpu', or 'cuda', 'cupy', 'jax' and 'torch' not %s" % (device))
+    if _device not in ["cpu", "gpu", "cuda", "cupy", "jax", "torch", "tensorflow", "tf"]:
+        raise ValueError("device should be one of 'cpu', 'gpu', 'cuda'," \
+                         "'cupy', 'jax', 'torch', and 'tensorflow' not %s" % (device))
 
     return _device, _device_id
 
@@ -58,6 +67,8 @@ def get_array_module(device):
         return JaxModule(_device, _device_id)
     elif "cupy" in _device:
         return CuPyModule(_device, _device_id)
+    elif "tensorflow" in _device or "tf" in _device:
+        return TFModule(_device, _device_id)
     else:
         return NumpyModule(_device, _device_id)
 
@@ -212,6 +223,7 @@ class CuPyModule(NumpyModule):
                     raise ValueError("Input array must be 2D")
                 sortarr = array[cp.lexsort(array.T[::-1])]
                 mask = cp.empty(array.shape[0], dtype=cp.bool_)
+
                 mask[0] = True
                 mask[1:] = cp.any(sortarr[1:] != sortarr[:-1], axis=1)
 
@@ -339,14 +351,58 @@ class JaxModule(NumpyModule):
     def stack(self, *args, **kwargs):
         return jnp.stack(*args, **kwargs)
 
-    def unique(self, *args, **kwargs):
-        return jnp.unique(*args, **kwargs)
+    def unique(self, array, return_counts=False, axis=None):
+        if axis is None:
+            return jnp.unique(array, return_counts=return_counts)
+        else:
+            if len(array.shape) != 2:
+                raise ValueError("Input array must be 2D")
+            # s = time.time()
+            sortarr = array[self.lexsort(array.T[::-1])]
+            # print(time.time() - s)
+            mask = jnp.empty(array.shape[0], dtype=bool)
+            # mask[0] = True
+            mask = mask.at[0].set(True)
+            # mask[1:] = jnp.any(sortarr[1:] != sortarr[:-1], axis=1)
+            mask = mask.at[1:].set(jnp.any(sortarr[1:] != sortarr[:-1], axis=1))
+
+            ret = sortarr[mask]
+            if not return_counts:
+                return ret
+
+            ret = ret,
+            if return_counts:
+                nonzero = jnp.nonzero(mask)[0]
+                idx = jnp.empty((nonzero.size + 1,), nonzero.dtype)
+                # idx[:-1] = nonzero
+                idx = idx.at[:-1].set(nonzero)
+                # idx[-1] = mask.size
+                idx = idx.at[-1].set(mask.size)
+                ret += idx[1:] - idx[:-1],
+                # print(time.time() - s)
+
+
+            return ret
+        # return jnp.unique(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
         return jnp.zeros(*args, **kwargs)
 
-    def lexsort(self, *args, **kwargs):
-        return jnp.lexsort(*args, **kwargs)
+    # def lexsort(self, *args, **kwargs):
+    #     return jnp.lexsort(*args, **kwargs)
+
+    def lexsort(self, keys, axis=-1):
+        if len(keys.shape) < 2:
+            raise ValueError(f"keys must be at least 2 dimensional, but {len(keys.shape)=}.")
+        if len(keys) == 0:
+            raise ValueError(f"Must have at least 1 key, but {len(keys)=}.")
+
+        idx = jnp.argsort(keys[0])
+        for k in keys[1:]:
+            # idx = idx.index_select(dim, k.index_select(dim, idx).argsort(dim=dim, stable=True))
+            idx = jnp.take(idx, jnp.argsort(jnp.take(k, idx, axis=axis), axis=axis), axis=axis)
+
+        return idx
 
     def arange(self, *args, **kwargs):
         return device_put(jnp.arange(*args, **kwargs), jax.devices()[self.device_id])
@@ -517,3 +573,157 @@ class TorchModule(NumpyModule):
 
     def broadcast_to(self, *args, **kwargs):
         return torch.broadcast_to(*args, **kwargs)
+
+class TFModule(NumpyModule):
+    def __init__(self, device=None, device_id=None):
+        super().__init__(device, device_id)
+
+    def __enter__(self):
+        return self._device.__enter__()
+
+    def __exit__(self, *args, **kwargs):
+        return self._device.__exit__(*args, **kwargs)
+
+    def array(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            tf.constant(*args, **kwargs)
+
+    def take(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            tf.gather(*args, **kwargs)
+
+    def repeat(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            tf.repeat(*args, **kwargs)
+
+    def concatenate(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            tf.concat(*args, **kwargs)
+
+    def stack(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            tf.stack(*args, **kwargs)
+
+    def unique(self, array, return_counts=False, axis=None):
+        with tf.device(f'/GPU:{self.device_id}'):
+            if axis is None:
+                if return_counts == False:
+                    y, idx = tf.unique(array)
+                    return y
+                else:
+                    y, idx, count = tf.unique_with_counts(array)
+                    return y, count
+            else:
+                if len(array.shape) != 2:
+                    raise ValueError("Input array must be 2D")
+                sortarr = array[self.lexsort(array.T[::-1])]
+                mask = tf.zeros(array.shape[0], dtype=bool)
+                mask[0] = True
+                mask[1:] = tf.math.reduce_any(sortarr[1:] != sortarr[:-1], axis=1)
+
+                ret = sortarr[mask]
+
+                if not return_counts:
+                    return ret
+
+                ret = ret,
+                if return_counts:
+                    nonzero = tf.math.count_nonzero(mask)[0]
+                    idx = tf.zeros((nonzero.size + 1,), nonzero.dtype)
+                    idx[:-1] = nonzero
+                    idx[-1] = mask.size
+                    ret += idx[1:] - idx[:-1],
+
+                return ret
+
+    def lexsort(self, keys, axis=-1):
+        with tf.device(f'/GPU:{self.device_id}'):
+            if tf.rank(keys) < 2:
+                raise ValueError(f"keys must be at least 2 dimensional, but {tf.rank(keys)=}.")
+            if len(keys) == 0:
+                raise ValueError(f"Must have at least 1 key, but {len(keys)=}.")
+
+            idx = tf.argsort(keys[0], axis=axis)
+            for k in keys[1:]:
+                idx = tf.gather(idx, tf.argsort(tf.gather(k, idx, axis=axis), axis=axis), axis=axis)
+
+            return idx
+
+    def arange(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.range(*args, **kwargs)
+
+    def multiply(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.multiply(*args, **kwargs)
+
+    def subtract(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.subtract(*args, **kwargs)
+
+    def divide(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.divide(*args, **kwargs)
+
+    def log2(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            numerator = tf.math.log(*args, **kwargs)
+            denominator = tf.math.log(tf.constant(2, dtype=numerator.dtype))
+            return numerator / denominator
+
+    def bincount(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.bincount(*args, **kwargs)
+
+    def asnumpy(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return args[0].numpy()
+
+    def argsort(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.argsort(*args, **kwargs)
+
+    def astype(self, x, dtype):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.cast(x, dtype=dtype)
+
+    def tile(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.tile(*args, **kwargs)
+
+    def where(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.where(*args, **kwargs)
+
+    def transpose(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            val_dims = kwargs.pop('axes')
+            return tf.transpose(*args, **kwargs, perm=val_dims)
+
+    def reshape(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.reshape(*args, **kwargs)
+
+    def greater(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.greater(*args, **kwargs)
+
+    def greater_equal(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.greater_equal(*args, **kwargs)
+
+    def less(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.less(*args, **kwargs)
+
+    def less_equal(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.less_equal(*args, **kwargs)
+
+    def logical_and(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.logical_and(*args, **kwargs)
+
+    def broadcast_to(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.broadcast_to(*args, **kwargs)

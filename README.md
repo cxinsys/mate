@@ -6,17 +6,32 @@
 - :snake: [Anaconda](https://www.anaconda.com) is recommended to use and develop MATE.
 - :penguin: Linux distros are tested and recommended to use and develop MATE.
 
+### Install from GitHub repository
+First, clone the recent version of this repository.
 
-MATE requires following backend-specific dependencies to be installed:
+```
+git clone https://github.com/cxinsys/mate
+```
+
+
+Now, we need to install MATE as a module.
+
+```
+cd mate
+pip install -e .
+```
+<br>
+
+- Default backend framework of the 'MATE' class is PyTorch.
+- **[recommended]** To use PyTorch Lightning framework, you need to use a another class called 'MATELightning' (see [MATELightning class](#MATELightning-class))
 
 <br>
 
-- PyTorch: [Installing PyTorch](https://pytorch.org/get-started/locally/)
+### Install optional frameworks
 
-PyTorch is default backend module of MATE. Also, it will be used if you set the device parameter to 'gpu' or 'cuda'.
-```angular2html
-conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
-```
+MATE supports several optional backend frameworks such as CuPy and JAX. \
+To use optional frameworks, you need to install the framework manually
+
 <br>
 
 - CuPy: [Installing CuPy from Conda-Forge with cudatoolkit](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge)
@@ -44,31 +59,6 @@ Use 'XLA_PYTHON_CLIENT_PREALLOCATE=false' to disables the preallocation behavior
 
 <br>
 
-- :zap: PyTorch Lightning: [Installing PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/starter/introduction.html#install-pytorch-lightning)
-
-MATE supports multi-GPU and multi-TPU Transfer Entropy calculations via PyTorch Lightning.<br>
-
-If you're using PyTorch Lightning, use the MATELightning class. For more information, see [MATELightning class](#MATELightning-class) below
-
-```angular2html
-pip install lightning
-```
-<br>
-
-### Install from GitHub repository
-First, clone the recent version of this repository.
-
-```
-git clone https://github.com/cxinsys/mate
-```
-
-
-Now, we need to install MATE as a module.
-
-```
-cd mate
-pip install -e .
-```
 
 ## Tutorial
 
