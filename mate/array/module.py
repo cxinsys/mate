@@ -351,7 +351,7 @@ class JaxModule(NumpyModule):
     def stack(self, *args, **kwargs):
         return jnp.stack(*args, **kwargs)
 
-    def unique(self, array, return_counts=False, axis=None):
+    def unique(self, *args, **kwargs):
         return jnp.unique(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
