@@ -7,9 +7,11 @@ from multiprocessing import Process, shared_memory, Semaphore
 import numpy as np
 # from KDEpy import TreeKDE, FFTKDE
 from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
 
 from mate.transferentropy import TransferEntropy
 from mate.utils import get_device_list
+from mate.preprocess import DiscretizerFactory
 
 class MATE(object):
     def __init__(self,
@@ -21,17 +23,17 @@ class MATE(object):
                  batch_size=None,
                  kp=0.5,
                  num_kernels=1,
-                 method='pushing',
+                 method='default',
                  percentile=0,
                  smooth_func=None,
                  smooth_param=None,
                  dt=1
                  ):
 
-        self._kp = kp
-        self._num_kernels = num_kernels
-        self._method = method
-        self._percentile = percentile
+        # self._kp = kp
+        # self._num_kernels = num_kernels
+        # self._method = method
+        # self._percentile = percentile
         self._batch_size = batch_size
 
         self._smooth_func = smooth_func
@@ -49,143 +51,7 @@ class MATE(object):
 
         self._dt = dt
 
-    # calculate kernel width
-
-    def kernel_width(self, arr=None, kp=None, percentile=None):
-        if arr is None:
-            arr = self._arr
-
-        if percentile > 0:
-            arr2 = arr.copy()
-            arr2.sort(axis=1)
-
-            i_beg = int(arr2.shape[1] / 100 * percentile)
-
-            std = np.std(arr2[:, i_beg:-i_beg], axis=1, ddof=1)
-        else:
-            std = np.std(arr, axis=1, ddof=1)
-
-        kw = kp * std
-        kw[kw == 0] = 1
-        return kw
-
-    # binning
-    def create_kde_array(self,
-                         kp=None,
-                         num_kernels=None,
-                         method='interpolation',
-                         dtype=np.int32
-                         ):
-
-        if not kp:
-            kp = self._kp
-        if not num_kernels:
-            num_kernels = self._num_kernels
-
-        arr = self._arr
-
-        stds = np.std(arr, axis=1, ddof=1)
-        mins = np.min(arr, axis=1)
-        maxs = np.max(arr, axis=1)
-
-        n_bins = np.ceil((maxs - mins) / stds).T.astype(dtype)
-
-        arrs = []
-
-        print(f"[Selected Method: {method.upper()}]")
-
-        if method=='interpolation':
-            bin_arr = ((arr.T - mins) / stds).T
-            mid_arr = (bin_arr[:, :-1] + bin_arr[:, 1:]) / 2
-
-            inter_arr = np.zeros((len(bin_arr), len(bin_arr[0])+len(mid_arr[0])))
-
-            inter_arr[:, ::2] = bin_arr
-            inter_arr[:, 1::2] = mid_arr
-
-            # Int Bin
-            # inter_arr = np.floor(inter_arr).astype(dtype)
-
-            # Float Bin
-            inter_arr = inter_arr.astype(np.float32)
-
-            inter_arr = np.where(inter_arr < 0, 0, inter_arr)
-            inter_arr = np.where(inter_arr >= n_bins, n_bins - 1, inter_arr)
-
-            print(f"Interpolation applied. Increased data length from {len(arr[0])} to {len(inter_arr[0])}.")
-
-            arrs = inter_arr[..., None]
-
-        elif method=='tagging':
-            print(f"Number of binned arrays for increasing pattern: {num_kernels}")
-
-            for i in range(num_kernels):
-                if i % 2 == 1: # odd
-                    bin_arr = np.floor((arr.T - (mins + ((i//2 + i%2) * kp * stds))) / stds).T.astype(dtype)
-                else:
-                    bin_arr = np.floor((arr.T - (mins - (i//2 * kp * stds))) / stds).T.astype(dtype)
-
-
-                bin_arr = np.where(bin_arr<0, 0, bin_arr)
-                bin_arr = np.where(bin_arr>=n_bins, n_bins-1, bin_arr)
-
-                bin_maxs = np.max(bin_arr, axis=1)
-
-                coeff = (i + 1) * 10 ** np.ceil(np.log10(bin_maxs))
-
-                bin_arr += coeff[..., None].astype(dtype)
-
-                arrs.append(bin_arr)
-
-            arrs = np.stack(arrs, axis=2)
-
-        elif method=='shifting':
-            print(f"[Num. Kernel: {num_kernels}, Kernel Width: {kp}]")
-
-            for i in range(num_kernels):
-                if i % 2 == 1:  # odd
-                    bin_arr = np.floor((arr.T - (mins + ((i // 2 + i % 2) * kp * stds))) / stds).T.astype(dtype) # pull
-                else:
-                    bin_arr = np.floor((arr.T - (mins - (i // 2 * kp * stds))) / stds).T.astype(dtype) # push
-
-                bin_arr = bin_arr.astype(dtype)
-
-                arrs.append(bin_arr)
-            arrs = np.stack(arrs, axis=2)
-
-        elif method == 'pushing':
-            print(f"[Kernel Width: {kp}]")
-
-            bin_arr = np.floor((arr.T - (mins - (kp * stds))) / stds).T.astype(dtype)
-
-            arrs = bin_arr[..., None]
-
-        elif method == 'pulling':
-            print(f"[Kernel Width: {kp}]")
-
-            bin_arr = np.floor((arr.T - (mins + (kp * stds))) / stds).T.astype(dtype)
-
-            arrs = bin_arr[..., None]
-
-        elif method == 'pushpull':
-            print(f"[Kernel Width: {kp}]")
-
-            bin_arr = np.floor((arr.T - (mins + (kp * stds))) / stds).T.astype(dtype)
-            arrs.append(bin_arr)
-            bin_arr = np.floor((arr.T - (mins - (kp * stds))) / stds).T.astype(dtype)
-            arrs.append(bin_arr)
-
-            arrs = np.stack(arrs, axis=2)
-
-        else:
-            print("Default Binning")
-            bin_arr = np.floor((arr.T - mins) / stds).T.astype(dtype)
-            arrs = bin_arr[..., None]
-
-        return arrs, n_bins
-
-
-    # multiprocessing worker(calculate te)
+        self._discretizer = DiscretizerFactory.create(method=method, kp=kp)
 
     def run(self,
             device=None,
@@ -194,15 +60,15 @@ class MATE(object):
             batch_size=None,
             arr=None,
             pairs=None,
-            kp=None,
-            num_kernels=None,
-            method=None,
-            percentile=None,
             smooth_func=None,
             smooth_param=None,
             kw_smooth=True,
             data_smooth=False,
-            dt=1
+            dt=1,
+            surrogate=False,
+            num_surrogate=1000,
+            threshold=0.05,
+            seed=1
             ):
 
         if not device:
@@ -248,14 +114,6 @@ class MATE(object):
                 self._pairs = np.asarray(tuple(self._pairs), dtype=np.int32)
             pairs = self._pairs
 
-        if not kp:
-            kp = self._kp
-
-        if not num_kernels:
-            num_kernels = self._num_kernels
-
-        if not method:
-            method = self._method
         if not dt:
             dt = self._dt
 
@@ -270,9 +128,7 @@ class MATE(object):
         self._arr = arr
         self._pairs = pairs
 
-        arr, n_bins = self.create_kde_array(kp=kp,
-                                    num_kernels=num_kernels,
-                                    method=method)
+        arr, n_bins = self._discretizer.binning(arr)
         tmp_rm = np.zeros((len(arr), len(arr)), dtype=np.float32)
 
         n_pairs = len(pairs)
@@ -301,6 +157,13 @@ class MATE(object):
             print("[Num. GPUS: {}, Num. Pairs: {}, Num. GPU_Pairs: {}, Batch Size: {}, Process per device: {}]".format(n_process, n_pairs,
                                                                                                n_subpairs, batch_size, procs_per_device))
 
+        if surrogate is True:
+            # seeding for surrogate test before applying multiprocessing
+            np.random.seed(seed)
+            print("[Surrogate test option was activated]")
+            print("[Number of surrogates] ", num_surrogate)
+            print("[Threshold] ", threshold)
+
         for i, i_beg in enumerate(range(0, n_pairs, n_subpairs)):
             i_end = i_beg + n_subpairs
 
@@ -320,9 +183,13 @@ class MATE(object):
                                                           shm.name,
                                                           np_shm,
                                                           sem,
-                                                          dt))
+                                                          dt,
+                                                          surrogate,
+                                                          num_surrogate,
+                                                          threshold))
                 processes.append(_process)
                 _process.start()
+
 
         for _process in processes:
             _process.join()

@@ -1,1 +1,1 @@
-from mate.dataset.dataset import PairDataSet
+from mate.dataset.mlpair import PairDataSet

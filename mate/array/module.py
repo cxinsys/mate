@@ -103,6 +103,9 @@ class NumpyModule(ArrayModule):
     def take(self, *args, **kwargs):
         return np.take(*args, **kwargs)
 
+    def take_along_axis(self, *args, **kwargs):
+        return np.take_along_axis(*args, **kwargs)
+
     def repeat(self, *args, **kwargs):
         return np.repeat(*args, **kwargs)
 
@@ -200,6 +203,10 @@ class CuPyModule(NumpyModule):
     def take(self, *args, **kwargs):
         with cp.cuda.Device(self.device_id):
             return cp.take(*args, **kwargs)
+
+    def take_along_axis(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.take_along_axis(*args, **kwargs)
 
     def repeat(self, array, repeats):
         with cp.cuda.Device(self.device_id):
@@ -342,6 +349,9 @@ class JaxModule(NumpyModule):
     def take(self, *args, **kwargs):
         return jnp.take(*args, **kwargs)
 
+    def take_along_axis(self, *args, **kwargs):
+        return jnp.take_along_axis(*args, **kwargs)
+
     def repeat(self, *args, **kwargs):
         return jnp.repeat(*args, **kwargs)
 
@@ -438,6 +448,10 @@ class TorchModule(NumpyModule):
             return torch.index_select(args[0], kwargs['axis'], args[1])
         else:
             return torch.take(args[0], args[1])
+
+    def take_along_axis(self, *args, **kwargs):
+        val_dim = kwargs.pop('axis')
+        return torch.take_along_dim(args[0], args[1].to(torch.int64), dim=val_dim)
 
     def repeat(self, *args, **kwargs):
         return torch.repeat_interleave(*args, **kwargs)
@@ -547,6 +561,10 @@ class TFModule(NumpyModule):
     def take(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
             tf.gather(*args, **kwargs)
+
+    def take_along_axis(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            tf.experimental.numpy.take_along_axis(*args, **kwargs)
 
     def repeat(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
