@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from mate.transferentropy import TELightning
 from mate import MATE
 from mate.dataset import PairDataSet
+from mate.preprocess import DiscretizerFactory
 
 # try:
 #     from .mate.models.layer import LightningTE
@@ -24,35 +25,34 @@ class MATELightning(MATE):
                  pairs=None,
                  kp=0.5,
                  num_kernels=1,
-                 method='pushing',
+                 method='default',
                  percentile=0,
                  smooth_func=None,
                  smooth_param=None,
                  len_time=None,
-                 dt=1):
+                 dt=1,
+                 surrogate=False,
+                 num_surrogate=1000,
+                 threshold=0.05,
+                 seed=1
+                 ):
         super().__init__()
 
-        self._pairs = pairs
-        self._arr = arr
-        self._bin_arr, self._n_bins = self.create_kde_array(kp=kp,
-                                                              num_kernels=num_kernels,
-                                                              method=method)
+        np.random.seed(seed)
+
+        dicretizer = DiscretizerFactory.create(method=method, kp=kp)
+        bin_arr, n_bins = dicretizer.binning(arr)
         self._devices = None
 
-        self.model = TELightning(arr=self._bin_arr, len_time=len_time, dt=dt, n_bins=self._n_bins)
-        self.dset_pair = PairDataSet(arr=self._bin_arr, pairs=self._pairs)
-
-    def kernel_width(self, arr, kp=None, percentile=None):
-        if percentile > 0:
-            arr.sort(axis=1)
-            i_beg = int(arr.shape[1] / 100 * percentile)
-            std = np.std(arr[:, i_beg:-i_beg], axis=1, ddof=1)
-        else:
-            std = np.std(arr, axis=1, ddof=1)
-        kw = kp * std
-        kw[kw == 0] = 1
-
-        return kw
+        self.model = TELightning(arr=bin_arr,
+                                 len_time=len_time,
+                                 dt=dt,
+                                 n_bins=n_bins,
+                                 surrogate=surrogate,
+                                 num_surrogate=num_surrogate,
+                                 threshold=threshold,
+                                 )
+        self.dset_pair = PairDataSet(arr=bin_arr, pairs=pairs)
 
     def custom_collate(self, batch):
         n_devices = None

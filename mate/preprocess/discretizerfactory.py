@@ -8,7 +8,7 @@ class DiscretizerFactory:
     def create(method, *args, **kwargs):
         _method = method.lower()
 
-        print(f"Method designated: {_method.upper()}")
+        # print(f"Method designated: {_method.upper()}")
 
         if "default" in _method:
             return Discretizer(*args, **kwargs)
