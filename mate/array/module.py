@@ -344,7 +344,9 @@ class JaxModule(NumpyModule):
         return self._device.__exit__(*args, **kwargs)
 
     def array(self, *args, **kwargs):
-        return device_put(jnp.array(*args, **kwargs), jax.devices()[self.device_id])
+        devices = jax.devices()
+        selected_device = next((device for device in devices if device.id == self.device_id), None)
+        return device_put(jnp.array(*args, **kwargs), selected_device)
 
     def take(self, *args, **kwargs):
         return jnp.take(*args, **kwargs)
@@ -371,7 +373,9 @@ class JaxModule(NumpyModule):
         return jnp.lexsort(*args, **kwargs)
 
     def arange(self, *args, **kwargs):
-        return device_put(jnp.arange(*args, **kwargs), jax.devices()[self.device_id])
+        devices = jax.devices()
+        selected_device = next((device for device in devices if device.id == self.device_id), None)
+        return device_put(jnp.arange(*args, **kwargs), selected_device)
 
     def multiply(self, *args, **kwargs):
         return jnp.multiply(*args, **kwargs)
