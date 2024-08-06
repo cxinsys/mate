@@ -1,4 +1,5 @@
 import time
+import os
 
 import numpy as np
 
@@ -8,6 +9,8 @@ except (ModuleNotFoundError, ImportError) as err:
     pass
 
 try:
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+
     import jax
     from jax import device_put
     import jax.numpy as jnp
@@ -22,6 +25,11 @@ except (ModuleNotFoundError, ImportError) as err:
 
 try:
     import tensorflow as tf
+    from tensorflow.python.client import device_lib
+
+    devices = tf.config.experimental.list_physical_devices('GPU')
+    for device in devices:
+        tf.config.experimental.set_memory_growth(device, True)
 except (ModuleNotFoundError, ImportError) as err:
     pass
 
@@ -525,6 +533,8 @@ class TorchModule(NumpyModule):
 
     def transpose(self, *args, **kwargs):
         val_dim = kwargs.pop('axes')
+        if not val_dim:
+            return torch.t(*args, **kwargs)
         return torch.permute(*args, **kwargs, dims=val_dim)
 
     def reshape(self, *args, **kwargs):
@@ -560,27 +570,27 @@ class TFModule(NumpyModule):
 
     def array(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
-            tf.constant(*args, **kwargs)
+            return tf.constant(*args, **kwargs)
 
     def take(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
-            tf.gather(*args, **kwargs)
+            return tf.gather(*args, **kwargs)
 
     def take_along_axis(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
-            tf.experimental.numpy.take_along_axis(*args, **kwargs)
+            return tf.experimental.numpy.take_along_axis(*args, **kwargs)
 
     def repeat(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
-            tf.repeat(*args, **kwargs)
+            return tf.repeat(*args, **kwargs)
 
     def concatenate(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
-            tf.concat(*args, **kwargs)
+            return tf.concat(*args, **kwargs)
 
     def stack(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
-            tf.stack(*args, **kwargs)
+            return tf.stack(*args, **kwargs)
 
     def unique(self, array, return_counts=False, axis=None):
         with tf.device(f'/GPU:{self.device_id}'):
@@ -594,22 +604,23 @@ class TFModule(NumpyModule):
             else:
                 if len(array.shape) != 2:
                     raise ValueError("Input array must be 2D")
-                sortarr = array[self.lexsort(array.T[::-1])]
-                mask = tf.zeros(array.shape[0], dtype=bool)
-                mask[0] = True
-                mask[1:] = tf.math.reduce_any(sortarr[1:] != sortarr[:-1], axis=1)
+                idx = self.lexsort(tf.transpose(array)[::-1])
+                sortarr = tf.gather(array, idx)
+                mask = tf.Variable(tf.zeros(array.shape[0], dtype=bool))
+                mask[0].assign(True)
+                mask[1:].assign(tf.math.reduce_any(sortarr[1:] != sortarr[:-1], axis=1))
 
-                ret = sortarr[mask]
+                ret = sortarr[tf.constant(mask)]
 
                 if not return_counts:
                     return ret
 
                 ret = ret,
                 if return_counts:
-                    nonzero = tf.math.count_nonzero(mask)[0]
-                    idx = tf.zeros((nonzero.size + 1,), nonzero.dtype)
-                    idx[:-1] = nonzero
-                    idx[-1] = mask.size
+                    nonzero = tf.experimental.numpy.nonzero(mask)[0]
+                    idx = tf.Variable(tf.zeros((tf.size(nonzero) + 1,), nonzero.dtype))
+                    idx[:-1].assign(nonzero)
+                    idx[-1].assign(tf.size(mask, out_type=idx.dtype))
                     ret += idx[1:] - idx[:-1],
 
                 return ret
@@ -667,7 +678,7 @@ class TFModule(NumpyModule):
 
     def tile(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
-            return tf.tile(*args, **kwargs)
+            return tf.experimental.numpy.tile(*args, **kwargs)
 
     def where(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):

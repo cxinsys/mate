@@ -108,20 +108,19 @@ class TransferEntropy(object):
 
         cnts_xt_yt = self.am.repeat(cnts_xt_yt, n_subuvals_xt_yt)
 
-        ind_xt_yt = self.am.lexsort(self.am.take(uvals_xt1_xt_yt, self.am.array([3, 2, 0]), axis=1).T)
+        ind_xt_yt = self.am.lexsort(self.am.transpose(self.am.take(uvals_xt1_xt_yt, self.am.array([3, 2, 0]), axis=1), axes=None))
         ind2ori_xt_yt = self.am.argsort(ind_xt_yt)
         cnts_xt_yt = self.am.take(cnts_xt_yt, ind2ori_xt_yt)
 
         cnts_xt = self.am.repeat(cnts_xt, n_subuvals_xt)
 
-        ind_xt = self.am.lexsort(self.am.take(uvals_xt1_xt_yt, self.am.array([2, 0]), axis=1).T)
+        ind_xt = self.am.lexsort(self.am.transpose(self.am.take(uvals_xt1_xt_yt, self.am.array([2, 0]), axis=1), axes=None))
         ind2ori_xt = self.am.argsort(ind_xt)
         cnts_xt = self.am.take(cnts_xt, ind2ori_xt)
 
         # TE
         p_xt1_xt_yt = self.am.divide(cnts_xt1_xt_yt, (len_time - 1) * bin_arrs.shape[-1])
         # p_xt1_xt_yt = self.am.divide(cnts_xt1_xt_yt, (len_time - 1))
-
         numer = self.am.multiply(cnts_xt1_xt_yt, cnts_xt)
         denom = self.am.multiply(cnts_xt1_xt, cnts_xt_yt)
         fraction = self.am.divide(numer, denom)
