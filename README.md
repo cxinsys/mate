@@ -63,7 +63,7 @@ pip install -U "jax[cuda12]"
 [//]: # (After install CUDA and CuDNN you can specify a particular CUDA and CuDNN version for jax explicitly)
 Install TensorFlow-GPU with CUDA
 ```angular2html
-pip install tensorflow
+python3 -m pip install tensorflow[and-cuda]
 ```
 
 <br>
