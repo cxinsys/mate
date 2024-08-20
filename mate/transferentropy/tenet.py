@@ -44,7 +44,9 @@ class MATETENET(object):
 
         entropy_final = []
 
-        jar_location = "infodynamics.jar"
+        abs_path = osp.dirname(osp.abspath(__file__))
+
+        jar_location = osp.join(abs_path, "infodynamics.jar")
         startJVM(getDefaultJVMPath(), "-ea", "-Djava.class.path=" + jar_location, "-Xmx16G")
 
         t_begin = time.time()
