@@ -14,5 +14,5 @@ setup(name='mate-cxinsys',
             'mate-cxinsys': ['mate/transferentropy/infodynamics.jar']
       },
       include_package_data=True,
-      install_requires=['numpy', 'scipy', 'lightning'],
+      install_requires=['numpy', 'scipy', 'lightning', 'JPype1'],
       zip_safe=False,)
