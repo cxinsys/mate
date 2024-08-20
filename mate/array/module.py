@@ -20,6 +20,19 @@ except (ModuleNotFoundError, ImportError) as err:
 
 try:
     import torch
+
+    TORCH_DTYPES = {
+        'int16': torch.int16,
+        'int32': torch.int32,
+        'float16': torch.float16,
+        'float32': torch.float32,
+        'float64': torch.float64,
+        np.int16: torch.int16,
+        np.int32: torch.int32,
+        np.float16: torch.float16,
+        np.float32: torch.float32,
+        np.float64: torch.float64
+    }
 except (ModuleNotFoundError, ImportError) as err:
     pass
 
@@ -32,20 +45,6 @@ try:
         tf.config.experimental.set_memory_growth(device, True)
 except (ModuleNotFoundError, ImportError) as err:
     pass
-
-
-TORCH_DTYPES = {
-    'int16' : torch.int16,
-    'int32' : torch.int32,
-    'float16' : torch.float16,
-    'float32': torch.float32,
-    'float64': torch.float64,
-    np.int16 : torch.int16,
-    np.int32 : torch.int32,
-    np.float16 : torch.float16,
-    np.float32: torch.float32,
-    np.float64: torch.float64
-}
 
 def parse_device(device):
     if device is None:
