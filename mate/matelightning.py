@@ -69,7 +69,7 @@ class MATELightning(MATE):
         return np.stack(pairs)
 
     def run(self,
-            device=None,
+            backend=None,
             devices=None,
             batch_size=None,
             num_workers=0):
@@ -82,7 +82,7 @@ class MATELightning(MATE):
                                   num_workers=num_workers,
                                   collate_fn=self.custom_collate)
 
-        trainer = L.Trainer(accelerator=device,
+        trainer = L.Trainer(accelerator=backend,
                             devices=devices,
                             num_nodes=1,
                             strategy="auto")

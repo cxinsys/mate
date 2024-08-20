@@ -15,7 +15,7 @@ from mate.preprocess import DiscretizerFactory
 
 class MATE(object):
     def __init__(self,
-                 device=None,
+                 backend=None,
                  device_ids=None,
                  procs_per_device=None,
                  batch_size=None,
@@ -37,7 +37,7 @@ class MATE(object):
         self._smooth_func = smooth_func
         self._smooth_param = smooth_param
 
-        self._device = device
+        self._device = backend
         self._device_ids = device_ids
         self._procs_per_device = procs_per_device
 
@@ -49,7 +49,7 @@ class MATE(object):
         self._discretizer = DiscretizerFactory.create(method=method, kp=kp)
 
     def run(self,
-            device=None,
+            backend=None,
             device_ids=None,
             procs_per_device=None,
             batch_size=0,
@@ -66,14 +66,14 @@ class MATE(object):
             seed=1
             ):
 
-        if not device:
+        if not backend:
             if not self._device:
-                self._device = device = "cpu"
-            device = self._device
+                self._device = backend = "cpu"
+            backend = self._device
 
         if not device_ids:
             if not self._device_ids:
-                if 'cpu' in device:
+                if 'cpu' in backend:
                     self._device_ids = [0]
                     device_ids = [0]
                 else:
@@ -85,7 +85,7 @@ class MATE(object):
                 self._procs_per_device = 1
             procs_per_device = self._procs_per_device
 
-        if 'cpu' in device:
+        if 'cpu' in backend:
             if procs_per_device > 1:
                 raise ValueError("CPU devices can only use one process per device")
 
@@ -93,7 +93,7 @@ class MATE(object):
             list_device_ids = [x for x in range(device_ids)]
             device_ids = list_device_ids
 
-        if not batch_size and device.lower() != "tenet":
+        if not batch_size and backend.lower() != "tenet":
             if not self._batch_size:
                 raise ValueError("batch size should be refined")
             batch_size = self._batch_size
@@ -120,7 +120,7 @@ class MATE(object):
         # if not smooth_param:
         #     smooth_param = self._smooth_param
 
-        if device.lower() != "tenet":
+        if backend.lower() != "tenet":
             arr, n_bins = self._discretizer.binning(arr)
 
         self._result_matrix = np.zeros((len(arr), len(arr)), dtype=np.float32)
@@ -137,11 +137,11 @@ class MATE(object):
 
         processes = []
         t_beg_batch = time.time()
-        if "cpu" in device:
+        if "cpu" in backend:
             print("[CPU device selected]")
             print("[Num. Processes: {}, Num. Pairs: {}, Num. Sub_Pair: {}, Batch Size: {}]".format(n_process, n_pairs,
                                                                                                  n_subpairs, batch_size))
-        elif "tenet" in device.lower():
+        elif "tenet" in backend.lower():
             print("[TENET selected]")
             print("[Num. Processes: {}, Num. Pairs: {}, Num. Sub Pairs: {}]".format(n_process, n_pairs, n_subpairs))
         else:
@@ -173,14 +173,14 @@ class MATE(object):
 
                 _process = None
 
-                device_name = device + ":" + str(device_ids[i])
+                device_name = backend + ":" + str(device_ids[i])
                 list_device.append(device_name)
                 list_pairs.append(pairs[t_beg:t_end])
                 # processes.append(_process) # test
 
         pool = multiprocessing.Pool(processes=n_process)
 
-        if "tenet" in device.lower():
+        if "tenet" in backend.lower():
             te = MATETENET()
             inputs = zip(list_pairs, list_arr, list_dt)
         else:

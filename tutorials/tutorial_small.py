@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # print(refined_exp_data.shape)
     worker = mate.MATELightning(arr=refined_exp_data)
-    results = worker.run(device='gpu', devices=8, batch_size=2**15, num_workers=0)
+    results = worker.run(backend='gpu', devices=8, batch_size=2**15, num_workers=0)
 
     # worker = mate.MATE()
     # results = worker.run(arr=refined_exp_data,

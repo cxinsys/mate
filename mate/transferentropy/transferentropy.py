@@ -79,7 +79,7 @@ class TransferEntropy(object):
         return entropy_final
 
     def solve(self,
-              device='cpu',
+              backend='cpu',
               batch_size=None,
               pairs=None,
               bin_arrs=None,
@@ -92,7 +92,7 @@ class TransferEntropy(object):
               len_time=None,
               ):
 
-        self._am = get_array_module(device)
+        self._am = get_array_module(backend)
 
         if not batch_size:
             raise ValueError("batch size should be defined")
@@ -126,7 +126,7 @@ class TransferEntropy(object):
         for i_iter, i_beg in enumerate(range(0, n_pairs, batch_size)):
             t_beg_batch = time.time()
 
-            print("[%s ID: %d, Batch #%d]" % (str(self.am.device).upper(), self.am.device_id, i_iter + 1))
+            print("[%s ID: %d, Batch #%d]" % (str(self.am.backend).upper(), self.am.device_id, i_iter + 1))
 
             stime_preproc = time.time()
 
@@ -182,6 +182,6 @@ class TransferEntropy(object):
 
             entropy_final.extend(list(self.am.asnumpy(entropies)))
 
-            print("[%s ID: %d, Batch #%d] Batch processing elapsed time: %f" % (str(self.am.device).upper(), self.am.device_id, i_iter + 1, time.time() - t_beg_batch))
+            print("[%s ID: %d, Batch #%d] Batch processing elapsed time: %f" % (str(self.am.backend).upper(), self.am.device_id, i_iter + 1, time.time() - t_beg_batch))
 
         return pairs, np.array(entropy_final)

@@ -46,27 +46,27 @@ try:
 except (ModuleNotFoundError, ImportError) as err:
     pass
 
-def parse_device(device):
-    if device is None:
+def parse_device(backend):
+    if backend is None:
         return "cpu", 0
 
-    device = device.lower()
-    _device = device
+    backend = backend.lower()
+    _device = backend
     _device_id = 0
 
-    if ":" in device:
-        _device, _device_id = device.split(":")
+    if ":" in backend:
+        _device, _device_id = backend.split(":")
         _device_id = int(_device_id)
 
     if _device not in ["cpu", "gpu", "cuda", "cupy", "jax", "torch", "tensorflow", "tf"]:
-        raise ValueError("device should be one of 'cpu', 'gpu', 'cuda'," \
-                         "'cupy', 'jax', 'torch', and 'tensorflow' not %s" % (device))
+        raise ValueError("backend should be one of 'cpu', 'gpu', 'cuda'," \
+                         "'cupy', 'jax', 'torch', and 'tensorflow' not %s" % (backend))
 
     return _device, _device_id
 
 
-def get_array_module(device):
-    _device, _device_id = parse_device(device)
+def get_array_module(backend):
+    _device, _device_id = parse_device(backend)
 
     if "gpu" in _device or "cuda" in _device or "torch" in _device:
         return TorchModule(_device, _device_id)
@@ -81,8 +81,8 @@ def get_array_module(device):
 
 
 class ArrayModule:
-    def __init__(self, device, device_id):
-        self._device = device
+    def __init__(self, backend, device_id):
+        self._device = backend
         self._device_id = device_id
 
     def __enter__(self):
@@ -92,7 +92,7 @@ class ArrayModule:
         return
 
     @property
-    def device(self):
+    def backend(self):
         return self._device
 
     @property
@@ -101,8 +101,8 @@ class ArrayModule:
 
 
 class NumpyModule(ArrayModule):
-    def __init__(self, device=None, device_id=None):
-        super().__init__(device, device_id)
+    def __init__(self, backend=None, device_id=None):
+        super().__init__(backend, device_id)
 
     def array(self, *args, **kwargs):
         return np.array(*args, **kwargs)
@@ -190,8 +190,8 @@ class NumpyModule(ArrayModule):
 
 
 class CuPyModule(NumpyModule):
-    def __init__(self, device=None, device_id=None):
-        super().__init__(device, device_id)
+    def __init__(self, backend=None, device_id=None):
+        super().__init__(backend, device_id)
 
         self._device = cp.cuda.Device()
         self._device.id = self._device_id
@@ -341,8 +341,8 @@ class CuPyModule(NumpyModule):
 
 
 class JaxModule(NumpyModule):
-    def __init__(self, device=None, device_id=None):
-        super().__init__(device, device_id)
+    def __init__(self, backend=None, device_id=None):
+        super().__init__(backend, device_id)
 
     def __enter__(self):
         return self._device.__enter__()
@@ -439,8 +439,8 @@ class JaxModule(NumpyModule):
         return jnp.broadcast_to(*args, **kwargs)
 
 class TorchModule(NumpyModule):
-    def __init__(self, device=None, device_id=None):
-        super().__init__(device, device_id)
+    def __init__(self, backend=None, device_id=None):
+        super().__init__(backend, device_id)
 
     def __enter__(self):
         return self._device.__enter__()
@@ -558,8 +558,8 @@ class TorchModule(NumpyModule):
         return torch.broadcast_to(*args, **kwargs)
 
 class TFModule(NumpyModule):
-    def __init__(self, device=None, device_id=None):
-        super().__init__(device, device_id)
+    def __init__(self, backend=None, device_id=None):
+        super().__init__(backend, device_id)
 
     def __enter__(self):
         return self._device.__enter__()
