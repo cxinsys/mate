@@ -9,7 +9,7 @@ import numpy as np
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
 
-from mate.transferentropy import TransferEntropy
+from mate.transferentropy import TransferEntropy, MATETENET
 from mate.utils import get_device_list
 from mate.preprocess import DiscretizerFactory
 
@@ -18,8 +18,6 @@ class MATE(object):
                  device=None,
                  device_ids=None,
                  procs_per_device=None,
-                 arr=None,
-                 pairs=None,
                  batch_size=None,
                  kp=0.5,
                  num_kernels=1,
@@ -43,9 +41,6 @@ class MATE(object):
         self._device_ids = device_ids
         self._procs_per_device = procs_per_device
 
-        self._arr = arr
-        self._pairs = pairs
-
         self._bin_arr = None
         self._result_matrix = None
 
@@ -57,7 +52,7 @@ class MATE(object):
             device=None,
             device_ids=None,
             procs_per_device=None,
-            batch_size=None,
+            batch_size=0,
             arr=None,
             pairs=None,
             smooth_func=None,
@@ -66,7 +61,7 @@ class MATE(object):
             data_smooth=False,
             dt=1,
             surrogate=False,
-            num_surrogate=1000,
+            num_surrogate=10,
             threshold=0.05,
             seed=1
             ):
@@ -98,7 +93,7 @@ class MATE(object):
             list_device_ids = [x for x in range(device_ids)]
             device_ids = list_device_ids
 
-        if not batch_size:
+        if not batch_size and device.lower() != "tenet":
             if not self._batch_size:
                 raise ValueError("batch size should be refined")
             batch_size = self._batch_size
@@ -125,11 +120,10 @@ class MATE(object):
         # if not smooth_param:
         #     smooth_param = self._smooth_param
 
-        self._arr = arr
-        self._pairs = pairs
+        if device.lower() != "tenet":
+            arr, n_bins = self._discretizer.binning(arr)
 
-        arr, n_bins = self._discretizer.binning(arr)
-        tmp_rm = np.zeros((len(arr), len(arr)), dtype=np.float32)
+        self._result_matrix = np.zeros((len(arr), len(arr)), dtype=np.float32)
 
         n_pairs = len(pairs)
 
@@ -139,23 +133,29 @@ class MATE(object):
 
         sub_batch = math.ceil(batch_size / procs_per_device)
 
-        multiprocessing.set_start_method('spawn', force=True)
-        shm = shared_memory.SharedMemory(create=True, size=tmp_rm.nbytes)
-        np_shm = np.ndarray(tmp_rm.shape, dtype=tmp_rm.dtype, buffer=shm.buf)
-        np_shm[:] = tmp_rm[:]
-
-        sem = Semaphore()
+        multiprocessing.set_start_method('spawn')
 
         processes = []
         t_beg_batch = time.time()
         if "cpu" in device:
             print("[CPU device selected]")
-            print("[Num. Process: {}, Num. Pairs: {}, Num. Sub_Pair: {}, Batch Size: {}]".format(n_process, n_pairs,
+            print("[Num. Processes: {}, Num. Pairs: {}, Num. Sub_Pair: {}, Batch Size: {}]".format(n_process, n_pairs,
                                                                                                  n_subpairs, batch_size))
+        elif "tenet" in device.lower():
+            print("[TENET selected]")
+            print("[Num. Processes: {}, Num. Pairs: {}, Num. Sub Pairs: {}]".format(n_process, n_pairs, n_subpairs))
         else:
             print("[GPU device selected]")
             print("[Num. GPUS: {}, Num. Pairs: {}, Num. GPU_Pairs: {}, Batch Size: {}, Process per device: {}]".format(n_process, n_pairs,
                                                                                                n_subpairs, batch_size, procs_per_device))
+        list_device = []
+        list_subatch = [sub_batch for i in range(n_process)]
+        list_pairs = []
+        list_arr = [arr for i in range(n_process)]
+        list_dt = [dt for i in range(n_process)]
+        list_surrogate = [surrogate for i in range(n_process)]
+        list_numsurro = [num_surrogate for i in range(n_process)]
+        list_threshold = [threshold for i in range(n_process)]
 
         if surrogate is True:
             # seeding for surrogate test before applying multiprocessing
@@ -171,35 +171,42 @@ class MATE(object):
                 t_beg = i_beg + j_beg
                 t_end = t_beg + n_procpairs
 
+                _process = None
+
                 device_name = device + ":" + str(device_ids[i])
-                # print("tenet device: {}".format(device_name))
+                list_device.append(device_name)
+                list_pairs.append(pairs[t_beg:t_end])
+                # processes.append(_process) # test
 
-                te = TransferEntropy(device=device_name)
+        pool = multiprocessing.Pool(processes=n_process)
 
-                _process = Process(target=te.solve, args=(sub_batch,
-                                                          pairs[t_beg:t_end],
-                                                          arr,
-                                                          n_bins,
-                                                          shm.name,
-                                                          np_shm,
-                                                          sem,
-                                                          dt,
-                                                          surrogate,
-                                                          num_surrogate,
-                                                          threshold))
-                processes.append(_process)
-                _process.start()
+        if "tenet" in device.lower():
+            te = MATETENET()
+            inputs = zip(list_pairs, list_arr, list_dt)
+        else:
+            list_nbins = [n_bins for i in range(n_process)]
 
+            te = TransferEntropy()
+            inputs = zip(list_device,
+                         list_subatch,
+                         list_pairs,
+                         list_arr,
+                         list_nbins,
+                         list_dt,
+                         list_surrogate,
+                         list_numsurro,
+                         list_threshold)
 
-        for _process in processes:
-            _process.join()
+        results = pool.starmap(te.solve, inputs)
+
+        pool.close()
+        pool.join()
+
+        for result in results:
+            pairs, entropies = result
+            self._result_matrix[pairs[:, 0], pairs[:, 1]] = entropies
 
         print("Total processing elapsed time {}sec.".format(time.time() - t_beg_batch))
-
-        self._result_matrix = np_shm.copy()
-
-        shm.close()
-        shm.unlink()
 
         return self._result_matrix
 
