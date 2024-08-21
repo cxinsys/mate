@@ -85,9 +85,10 @@ class MATE(object):
                 self._procs_per_device = 1
             procs_per_device = self._procs_per_device
 
-        if 'cpu' in backend:
+        if 'cpu' in backend or 'tenet' in backend:
             if procs_per_device > 1:
-                raise ValueError("CPU devices can only use one process per device")
+                raise Warning("CPU devices can only use one process per device")
+            procs_per_device = 1
 
         if type(device_ids) is int:
             list_device_ids = [x for x in range(device_ids)]
@@ -120,6 +121,7 @@ class MATE(object):
         # if not smooth_param:
         #     smooth_param = self._smooth_param
 
+        n_bins = None
         if backend.lower() != "tenet":
             arr, n_bins = self._discretizer.binning(arr)
 
@@ -133,7 +135,7 @@ class MATE(object):
 
         sub_batch = math.ceil(batch_size / procs_per_device)
 
-        multiprocessing.set_start_method('spawn')
+        multiprocessing.set_start_method('spawn', force=True)
 
         processes = []
         t_beg_batch = time.time()
@@ -149,13 +151,14 @@ class MATE(object):
             print("[Num. GPUS: {}, Num. Pairs: {}, Num. GPU_Pairs: {}, Batch Size: {}, Process per device: {}]".format(n_process, n_pairs,
                                                                                                n_subpairs, batch_size, procs_per_device))
         list_device = []
-        list_subatch = [sub_batch for i in range(n_process)]
+        list_subatch = []
         list_pairs = []
-        list_arr = [arr for i in range(n_process)]
-        list_dt = [dt for i in range(n_process)]
-        list_surrogate = [surrogate for i in range(n_process)]
-        list_numsurro = [num_surrogate for i in range(n_process)]
-        list_threshold = [threshold for i in range(n_process)]
+        list_arr = []
+        list_nbins = []
+        list_dt = []
+        list_surrogate = []
+        list_numsurro = []
+        list_threshold = []
 
         if surrogate is True:
             # seeding for surrogate test before applying multiprocessing
@@ -171,21 +174,23 @@ class MATE(object):
                 t_beg = i_beg + j_beg
                 t_end = t_beg + n_procpairs
 
-                _process = None
-
                 device_name = backend + ":" + str(device_ids[i])
                 list_device.append(device_name)
+                list_subatch.append(sub_batch)
                 list_pairs.append(pairs[t_beg:t_end])
-                # processes.append(_process) # test
+                list_arr.append(arr)
+                list_nbins.append(n_bins)
+                list_dt.append(dt)
+                list_surrogate.append(surrogate)
+                list_numsurro.append(num_surrogate)
+                list_threshold.append(threshold)
 
-        pool = multiprocessing.Pool(processes=n_process)
+        pool = multiprocessing.Pool(processes=n_process*procs_per_device)
 
         if "tenet" in backend.lower():
             te = MATETENET()
             inputs = zip(list_pairs, list_arr, list_dt)
         else:
-            list_nbins = [n_bins for i in range(n_process)]
-
             te = TransferEntropy()
             inputs = zip(list_device,
                          list_subatch,
