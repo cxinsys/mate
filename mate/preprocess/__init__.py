@@ -1,6 +1,5 @@
-from mate.preprocess.discretizer import Discretizer
-from mate.preprocess.shiftdiscretizer import ShiftDiscretizer
-from mate.preprocess.interpdiscretizer import InterpDiscretizer
-from mate.preprocess.tagdiscretizer import TagDiscretizer
+from mate.preprocess.discretizer import Discretizer, ShiftDiscretizer, InterpDiscretizer, TagDiscretizer
+from mate.preprocess.smoother import MovingAvgSmoother, SavgolSmoother, LowessSmoother, ExpMovingAverageSmoother
 
-from mate.preprocess.discretizerfactory import DiscretizerFactory
+from mate.preprocess.factory import DiscretizerFactory
+from mate.preprocess.factory import SmootherFactory
