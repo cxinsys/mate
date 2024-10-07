@@ -1,6 +1,8 @@
 import math
 
 import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
 
 class Discretizer():
     def __init__(self,
@@ -147,3 +149,86 @@ class TagDiscretizer(Discretizer):
         arrs = np.stack(arrs, axis=2)
 
         return arrs, n_bins
+
+class FixedWidthDiscretizer(Discretizer):
+    def __init__(self, family, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.n_bins = 10
+
+        if family:
+            if 'num_bins' in family:
+                self.n_bins = family['num_bins']
+
+    def binning(self, arr):
+        binned_data = []
+
+        for data in arr:
+            bins = np.linspace(np.min(data), np.max(data), self.n_bins)
+            tmp_data = np.digitize(data, bins)
+            binned_data.append(tmp_data)
+
+        arrs = np.array(binned_data)
+        return np.expand_dims(arrs, -1), self.n_bins
+
+class QuantileDiscretizer(Discretizer):
+    def __init__(self, family, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.n_bins = 5
+
+        if family:
+            if 'num_bins' in family:
+                self.n_bins = family['num_bins']
+
+    def binning(self, arr):
+        binned_data = []
+
+        for data in arr:
+            tmp_data, bins = pd.qcut(data, self.n_bins, retbins=True, duplicates='drop')
+            labels = np.arange(len(bins) - 1)
+            tmp_data = pd.qcut(data, self.n_bins, labels, duplicates='drop')
+            binned_data.append(list(tmp_data))
+
+        arrs = np.array(binned_data)
+        return np.expand_dims(arrs, -1), self.n_bins
+
+class KmeansDiscretizer(Discretizer):
+    def __init__(self, family, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.n_bins = 5
+
+        if family:
+            if 'num_bins' in family:
+                self.n_bins = family['num_bins']
+
+    def binning(self, arr):
+        binned_data = []
+
+        for data in arr:
+            kmeans = KMeans(n_clusters=self.n_bins, random_state=0).fit(data.reshape(-1, 1))
+            tmp_data = list(kmeans.labels_)
+            binned_data.append(tmp_data)
+
+        arrs = np.array(binned_data)
+        return np.expand_dims(arrs, -1), self.n_bins
+
+class LogDiscretizer(Discretizer):
+    def __init__(self, family, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.n_bins = 10
+
+        if family:
+            if 'num_bins' in family:
+                self.n_bins = family['num_bins']
+
+    def binning(self, arr):
+        binned_data = []
+
+        for data in arr:
+            logmax = np.ceil(np.max(np.log10(data))).astype(int)
+            logmin = np.floor(np.min(np.log10(data))).astype(int)
+            log_bins = np.logspace(logmin, logmax, self.n_bins)
+            tmp_data = np.digitize(data, log_bins)
+            binned_data.append(tmp_data)
+
+        arrs = np.array(binned_data)
+        return np.expand_dims(arrs, -1), self.n_bins

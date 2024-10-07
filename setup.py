@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='mate-cxinsys',
-      version='0.1.1',
+      version='{{VERSION_PLACEHOLDER}}',
       description='MATE',
       url='https://github.com/cxinsys/mate',
       author='Complex Intelligent Systems Laboratory (CISLAB)',
@@ -14,5 +14,5 @@ setup(name='mate-cxinsys',
             'mate-cxinsys': ['mate/transferentropy/infodynamics.jar']
       },
       include_package_data=True,
-      install_requires=['numpy', 'scipy', 'lightning', 'JPype1'],
+      install_requires=['numpy', 'scipy', 'lightning', 'JPype1', 'scikit-learn'],
       zip_safe=False,)

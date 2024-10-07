@@ -6,47 +6,61 @@ import statsmodels.api as sm
 from scipy.signal import savgol_filter
 
 class MovingAvgSmoother():
-    def __init__(self,
-                 window_size,
-                 ):
+    def __init__(self, family):
+        self.window_size = 11
 
-        self.window_size = window_size
+        if 'window_size' in family:
+            self.window_size = family['window_size']
+
     def smoothing(self, arr):
         avg_data = []
         for d in arr:
-            avg_term = np.convolve(d, np.ones(self.window_size) / self.window_size, mode='valid')
+            avg_term = np.convolve(d.squeeze(1), np.ones(self.window_size) / self.window_size, mode='valid')
             avg_data.append(avg_term)
 
-        return np.array(avg_data)
+        return np.expand_dims(np.array(avg_data), -1)
 
 class SavgolSmoother():
-    def __init__(self,
-                 window_length=None,
-                 polyorder=2):
-        self.window_length = window_length
-        self.polyorder = polyorder
+    def __init__(self, family):
+        self.window_length = 11
+        self.polyorder = 2
+
+        if 'window_length' in family:
+            self.window_length = family['window_length']
+        if 'polyorder' in family:
+            self.polyorder = family['polyorder']
 
     def smoothing(self, arr):
-        return savgol_filter(x=arr,
-                             window_length=self.window_length,
-                             polyorder=self.polyorder)
+        savgol_data = savgol_filter(x=arr.squeeze(-1),
+                                     window_length=self.window_length,
+                                     polyorder=self.polyorder)
+        return np.expand_dims(savgol_data, -1)
 
 class ExpMovingAverageSmoother():
-    def __init__(self, span=20):
-        self.span = span
+    def __init__(self, family):
+        self.span = 20
+
+        if 'span' in family:
+            self.span = family['span']
 
     def smoothing(self, arr):
-        df = pd.DataFrame(arr)
-        return df.ewm(span=self.span).mean()
+        shape = arr.shape
+        df = pd.DataFrame(arr.squeeze(-1))
+        exp_data = df.ewm(span=self.span).mean().to_numpy()
+
+        return np.expand_dims(exp_data, -1)
 
 class LowessSmoother():
-    def __init__(self, frac=0.025):
-        self.frac = frac
+    def __init__(self, family):
+        self.frac = 0.025
+
+        if 'frac' in family:
+            self.frac = family['frac']
 
     def smoothing(self, arr):
         lowess_data = []
         for data in arr:
-            lowess_term = sm.nonparametric.lowess(data, np.arange(len(data)), frac=self.frac)
+            lowess_term = sm.nonparametric.lowess(data.squeeze(1), np.arange(len(data)), frac=self.frac)
             lowess_data.append(lowess_term[:, 1])
 
-        return np.array(lowess_data)
+        return np.expand_dims(np.array(lowess_data), -1)

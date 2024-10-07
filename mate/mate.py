@@ -11,7 +11,7 @@ from tqdm.contrib.concurrent import process_map
 
 from mate.transferentropy import TransferEntropy, MATETENET
 from mate.utils import get_device_list
-from mate.preprocess import DiscretizerFactory
+from mate.preprocess import DiscretizerFactory, SmootherFactory
 
 class MATE(object):
     def __init__(self,
@@ -21,21 +21,13 @@ class MATE(object):
                  batch_size=None,
                  kp=0.5,
                  num_kernels=1,
-                 method='default',
-                 percentile=0,
-                 smooth_func=None,
-                 smooth_param=None,
+                 method = 'default',
+                 binningfamily: dict = None,
+                 smoothfamily: dict = None,
                  dt=1
                  ):
 
-        # self._kp = kp
-        # self._num_kernels = num_kernels
-        # self._method = method
-        # self._percentile = percentile
         self._batch_size = batch_size
-
-        self._smooth_func = smooth_func
-        self._smooth_param = smooth_param
 
         self._device = backend
         self._device_ids = device_ids
@@ -46,7 +38,13 @@ class MATE(object):
 
         self._dt = dt
 
-        self._discretizer = DiscretizerFactory.create(method=method, kp=kp)
+        self._discretizer = DiscretizerFactory.create(method=method, binningfamily=binningfamily, kp=kp)
+        self._smoother = SmootherFactory.create(smoothfamily=smoothfamily)
+
+        if self._smoother is None:
+            print(f"[DISCRETIZER: {method}, SMOOTHER: None]")
+        else:
+            print(f"[DISCRETIZER: {method}, SMOOTHER: {smoothfamily['method']}]")
 
     def run(self,
             backend=None,
@@ -55,10 +53,6 @@ class MATE(object):
             batch_size=0,
             arr=None,
             pairs=None,
-            smooth_func=None,
-            smooth_param=None,
-            kw_smooth=True,
-            data_smooth=False,
             dt=1,
             surrogate=False,
             num_surrogate=10,
@@ -113,17 +107,13 @@ class MATE(object):
         if not dt:
             dt = self._dt
 
-        # if not percentile:
-        #     percentile = self._percentile
-        # if not smooth_func:
-        #     smooth_func = self._smooth_func
-        #
-        # if not smooth_param:
-        #     smooth_param = self._smooth_param
-
         n_bins = None
         if backend.lower() != "tenet":
-            arr, n_bins = self._discretizer.binning(arr)
+            if self._discretizer:
+                arr, n_bins = self._discretizer.binning(arr)
+
+            if self._smoother:
+                arr = self._smoother.smoothing(arr)
 
         self._result_matrix = np.zeros((len(arr), len(arr)), dtype=np.float32)
 
