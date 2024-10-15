@@ -35,7 +35,7 @@ class DiscretizerFactory:
 class SmootherFactory:
     @staticmethod
     def create(smoothfamily: dict = None):
-        if not smoothfamily or not isinstance(smoothfamily, dict):
+        if not smoothfamily or smoothfamily == 'None':
             return None
         _method = smoothfamily['method'].lower()
 
