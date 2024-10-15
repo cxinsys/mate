@@ -197,7 +197,7 @@ class QuantileDiscretizer(Discretizer):
         for i, data in enumerate(arr):
             tmp_data, bins = pd.qcut(data, self.n_bins[i], retbins=True, duplicates='drop')
             labels = np.arange(len(bins) - 1)
-            tmp_data = pd.qcut(data, self.n_bins, labels, duplicates='drop')
+            tmp_data = pd.qcut(data, self.n_bins[i], labels, duplicates='drop')
             binned_data.append(list(tmp_data))
 
         arrs = np.array(binned_data)
