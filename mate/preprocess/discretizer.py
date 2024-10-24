@@ -85,16 +85,16 @@ class ShiftDiscretizer(Discretizer):
 
         n_bins = np.ceil((maxs - mins) / stds).T.astype(self._dtype)
 
-        if 'shift_left' in self._method:
+        if self._method == 'fsbw-l':
             bin_arr = np.floor((arr.T - (mins - (self._kp * stds))) / stds).T.astype(self._dtype)
             arrs = bin_arr[..., None]
 
-        elif 'shift_right' in self._method:
+        elif self._method == 'fsbw-r':
             bin_arr = np.floor((arr.T - (mins + (self._kp * stds))) / stds).T.astype(self._dtype)
 
             arrs = bin_arr[..., None]
 
-        elif 'shift_both' in self._method:
+        elif self._method == 'fsbw-b':
             for i in range(3):
                 if i % 2 == 1:  # odd
                     bin_arr = np.floor((arr.T - (mins + ((i // 2 + i % 2) * self._kp * stds))) / stds).T.astype(self._dtype)  # pull
