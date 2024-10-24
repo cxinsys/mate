@@ -9,21 +9,21 @@ class DiscretizerFactory:
             return None
         _method = method.lower()
 
-        if _method == "FSBW":
+        if _method == "fsbw":
             return Discretizer(*args, **kwargs)
-        elif _method == "FSBW-L":
+        elif _method == "fsbw-l":
             return ShiftDiscretizer(_method, *args, **kwargs)
-        elif _method == "FSBW-R":
+        elif _method == "fsbw-r":
             return ShiftDiscretizer(_method, *args, **kwargs)
-        elif _method == "FSBW-B":
+        elif _method == "fsbw-b":
             return ShiftDiscretizer(_method, *args, **kwargs)
-        elif _method == "FSBW-I":
+        elif _method == "fsbw-i":
             return InterpDiscretizer(*args, **kwargs)
-        elif _method == "FSBW-T":
+        elif _method == "fsbw-t":
             return TagDiscretizer(*args, **kwargs)
-        elif _method == "FSBN":
+        elif _method == "fsbw":
             return FixedWidthDiscretizer(family=binningfamily, *args, **kwargs)
-        elif _method == "FSBQ":
+        elif _method == "fsbw":
             return QuantileDiscretizer(family=binningfamily, *args, **kwargs)
         elif _method == "K-means":
             return KmeansDiscretizer(family=binningfamily, *args, **kwargs)
