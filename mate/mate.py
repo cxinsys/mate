@@ -21,9 +21,9 @@ class MATE(object):
                  batch_size=None,
                  kp=0.5,
                  num_kernels=1,
-                 method = 'default',
-                 binningfamily: dict = None,
-                 smoothfamily: dict = None,
+                 binning_method = 'default',
+                 binning_opt: dict = None,
+                 smoothing_opt: dict = None,
                  dt=1
                  ):
 
@@ -38,13 +38,13 @@ class MATE(object):
 
         self._dt = dt
 
-        self._discretizer = DiscretizerFactory.create(method=method, binningfamily=binningfamily, kp=kp)
-        self._smoother = SmootherFactory.create(smoothfamily=smoothfamily)
+        self._discretizer = DiscretizerFactory.create(binning_method=binning_method, binning_family=binning_opt, kp=kp)
+        self._smoother = SmootherFactory.create(smoothing_opt=smoothing_opt)
 
         if self._smoother is None:
-            print(f"[DISCRETIZER: {method}, SMOOTHER: None]")
+            print(f"[DISCRETIZER: {binning_method}, SMOOTHER: None]")
         else:
-            print(f"[DISCRETIZER: {method}, SMOOTHER: {smoothfamily['method']}]")
+            print(f"[DISCRETIZER: {binning_method}, SMOOTHER: {smoothing_opt['method']}]")
 
     def run(self,
             backend=None,

@@ -4,10 +4,10 @@ from mate.preprocess import MovingAvgSmoother, SavgolSmoother, LowessSmoother, E
 
 class DiscretizerFactory:
     @staticmethod
-    def create(method, binningfamily: dict = None, *args, **kwargs):
-        if not method:
+    def create(binning_method, binning_family: dict = None, *args, **kwargs):
+        if not binning_method:
             return None
-        _method = method.lower()
+        _method = binning_method.lower()
 
         if _method == "fsbw":
             return Discretizer(*args, **kwargs)
@@ -22,30 +22,30 @@ class DiscretizerFactory:
         elif _method == "fsbw-t":
             return TagDiscretizer(*args, **kwargs)
         elif _method == "fsbw":
-            return FixedWidthDiscretizer(family=binningfamily, *args, **kwargs)
+            return FixedWidthDiscretizer(family=binning_family, *args, **kwargs)
         elif _method == "fsbw":
-            return QuantileDiscretizer(family=binningfamily, *args, **kwargs)
+            return QuantileDiscretizer(family=binning_family, *args, **kwargs)
         elif _method == "K-means":
-            return KmeansDiscretizer(family=binningfamily, *args, **kwargs)
+            return KmeansDiscretizer(family=binning_family, *args, **kwargs)
         elif "log" in _method:
-            return LogDiscretizer(family=binningfamily, *args, **kwargs)
+            return LogDiscretizer(family=binning_family, *args, **kwargs)
 
         raise ValueError(f"{_method} is not a supported discretizer.")
 
 class SmootherFactory:
     @staticmethod
-    def create(smoothfamily: dict = None):
-        if not smoothfamily or smoothfamily == 'None':
+    def create(smoothing_opt: dict = None):
+        if not smoothing_opt or smoothing_opt == 'None':
             return None
-        _method = smoothfamily['method'].lower()
+        _method = smoothing_opt['method'].lower()
 
         if 'mov' in _method:
-            return MovingAvgSmoother(smoothfamily)
+            return MovingAvgSmoother(smoothing_opt)
         elif 'savgol' in _method:
-            return SavgolSmoother(smoothfamily)
+            return SavgolSmoother(smoothing_opt)
         elif 'exp' in _method:
-            return ExpMovingAverageSmoother(smoothfamily)
+            return ExpMovingAverageSmoother(smoothing_opt)
         elif 'loess' or 'lowess' in _method:
-            return LowessSmoother(smoothfamily)
+            return LowessSmoother(smoothing_opt)
 
         raise ValueError(f'{_method} is not supported smoother.')

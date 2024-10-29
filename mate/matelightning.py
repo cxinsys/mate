@@ -25,9 +25,9 @@ class MATELightning(MATE):
                  pairs=None,
                  kp=0.5,
                  num_kernels=1,
-                 method='default',
-                 binningfamily: dict = None,
-                 smoothfamily: dict = None,
+                 binning_method = 'default',
+                 binning_opt: dict = None,
+                 smoothing_opt: dict = None,
                  len_time=None,
                  dt=1,
                  surrogate=False,
@@ -39,13 +39,13 @@ class MATELightning(MATE):
 
         np.random.seed(seed)
 
-        discretizer = DiscretizerFactory.create(method=method, binningfamily=binningfamily, kp=kp)
-        smoother = SmootherFactory.create(smoothfamily=smoothfamily)
+        discretizer = DiscretizerFactory.create(binning_method=binning_method, binning_family=binning_opt, kp=kp)
+        smoother = SmootherFactory.create(smoothing_opt=smoothing_opt)
 
         if smoother is None:
-            print(f"[DISCRETIZER: {method}, SMOOTHER: None]")
+            print(f"[DISCRETIZER: {binning_method}, SMOOTHER: None]")
         else:
-            print(f"[DISCRETIZER: {method}, SMOOTHER: {smoothfamily['method']}]")
+            print(f"[DISCRETIZER: {binning_method}, SMOOTHER: {smoothing_opt['method']}]")
 
         if discretizer:
             arr, n_bins = discretizer.binning(arr)
