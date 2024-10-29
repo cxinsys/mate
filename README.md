@@ -93,7 +93,7 @@ worker = mate.MATE()
 
 - **arr**: numpy array for transfer entropy calculation, required
 - **pair**: numpy array for calculation pairs, optional, default: compute possible pairs from all nodes in the arr
-- **device**: optional, default: 'cpu'
+- **backend**: optional, default: 'cpu'
 - **device_ids**: optional, default: [0] (cpu), [list of whole gpu devices] (gpu) 
 - **procs_per_device**: The number of processes to create per device when using non 'cpu' devices, optional, default: 1
 - **batch_size**: required
@@ -104,7 +104,7 @@ worker = mate.MATE()
 ```angular2html
 result_matrix = worker.run(arr=arr,
                            pairs=pairs,
-                           device=device,
+                           backend=backend,
                            device_ids=device_ids,
                            procs_per_device=procs_per_device,
                            batch_size=batch_size,
@@ -143,12 +143,12 @@ MATELightning's run function parameters take the same values as [PyTorch's DataL
 and [PyTorch Lightning's Trainer](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html#trainer). 
 For additional options for parameters, see those documents
 
-- **device**: required, 'gpu', 'cpu' or 'tpu' etc
+- **backend**: required, 'gpu', 'cpu' or 'tpu' etc
 - **devices**: required, int or [list of device id]
 - **batch_size**: required
 - **num_workers**: optional, default: 0
 ```angular2html
-result_matrix = worker.run(device=device,
+result_matrix = worker.run(backend=backend,
                            devices=devices,
                            batch_size=batch_size,
                            num_worker=num_worker)
