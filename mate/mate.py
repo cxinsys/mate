@@ -109,11 +109,11 @@ class MATE(object):
 
         n_bins = None
         if backend.lower() != "tenet":
-            if self._discretizer:
-                arr, n_bins = self._discretizer.binning(arr)
-
             if self._smoother:
                 arr = self._smoother.smoothing(arr)
+
+            if self._discretizer:
+                arr, n_bins = self._discretizer.binning(arr)
 
         self._result_matrix = np.zeros((len(arr), len(arr)), dtype=np.float32)
 

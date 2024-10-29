@@ -47,10 +47,11 @@ class MATELightning(MATE):
         else:
             print(f"[DISCRETIZER: {binning_method}, SMOOTHER: {smoothing_opt['method']}]")
 
-        if discretizer:
-            arr, n_bins = discretizer.binning(arr)
         if smoother:
             arr = smoother.smoothing(arr)
+        if discretizer:
+            arr, n_bins = discretizer.binning(arr)
+
         self._devices = None
 
         self.model = TELightning(arr=arr,
