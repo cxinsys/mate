@@ -21,9 +21,9 @@ class DiscretizerFactory:
             return InterpDiscretizer(*args, **kwargs)
         elif _method == "fsbw-t":
             return TagDiscretizer(*args, **kwargs)
-        elif _method == "fsbw":
+        elif _method == "fsbn":
             return FixedWidthDiscretizer(family=binning_family, *args, **kwargs)
-        elif _method == "fsbw":
+        elif _method == "fsbq":
             return QuantileDiscretizer(family=binning_family, *args, **kwargs)
         elif _method == "K-means":
             return KmeansDiscretizer(family=binning_family, *args, **kwargs)

@@ -188,6 +188,15 @@ class NumpyModule(ArrayModule):
     def broadcast_to(self, *args, **kwargs):
         return np.broadcast_to(*args, **kwargs)
 
+    def minimum(self, *args, **kwargs):
+        return np.minimum(*args, **kwargs)
+
+    def min(self, *args, **kwargs):
+        return np.min(*args, **kwargs)
+
+    def max(self, *args, **kwargs):
+        return np.max(*args, **kwargs)
+
 
 class CuPyModule(NumpyModule):
     def __init__(self, backend=None, device_id=None):
@@ -339,6 +348,18 @@ class CuPyModule(NumpyModule):
         with cp.cuda.Device(self.device_id):
             return cp.broadcast_to(*args, **kwargs)
 
+    def minimum(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.minimum(*args, **kwargs)
+
+    def min(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.amin(*args, **kwargs)
+
+    def max(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.amax(*args, **kwargs)
+
 
 class JaxModule(NumpyModule):
     def __init__(self, backend=None, device_id=None):
@@ -438,6 +459,15 @@ class JaxModule(NumpyModule):
     def broadcast_to(self, *args, **kwargs):
         return jnp.broadcast_to(*args, **kwargs)
 
+    def minimum(self, *args, **kwargs):
+        return jnp.minimum(*args, **kwargs)
+
+    def max(self, *args, **kwargs):
+        return jnp.max(*args, **kwargs)
+
+    def min(self, *args, **kwargs):
+        return jnp.min(*args, **kwargs)
+
 class TorchModule(NumpyModule):
     def __init__(self, backend=None, device_id=None):
         super().__init__(backend, device_id)
@@ -481,9 +511,6 @@ class TorchModule(NumpyModule):
             return torch.unique(*args, **kwargs, dim=val_dim)
         else:
             return torch.unique(*args, **kwargs)
-
-    # def zeros(self, *args, **kwargs):
-    #     return jnp.zeros(*args, **kwargs)
 
     def lexsort(self, keys, dim=-1):
         if keys.ndim < 2:
@@ -556,6 +583,18 @@ class TorchModule(NumpyModule):
 
     def broadcast_to(self, *args, **kwargs):
         return torch.broadcast_to(*args, **kwargs)
+
+    def minimum(self, *args, **kwargs):
+        return torch.minimum(*args, **kwargs)
+
+    def max(self, *args, **kwargs):
+        val_dim = kwargs.pop('axis')
+        return torch.max(args[0], dim=val_dim)
+
+    def min(self, *args, **kwargs):
+        val_dim = kwargs.pop('axis')
+        return torch.min(args[0], dim=val_dim)
+
 
 class TFModule(NumpyModule):
     def __init__(self, backend=None, device_id=None):
@@ -715,3 +754,15 @@ class TFModule(NumpyModule):
     def broadcast_to(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
             return tf.broadcast_to(*args, **kwargs)
+
+    def minimum(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.minimum(*args, **kwargs)
+
+    def max(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.reduce_max(*args, **kwargs)
+
+    def min(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.reduce_min(*args, **kwargs)
