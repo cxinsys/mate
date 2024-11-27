@@ -10,37 +10,18 @@ from scipy.stats import norm
 from jpype import *
 
 class MATETENET(object):
-    def __init__(self,
-                 pairs=None,
-                 bin_arrs=None,
-                 dt=1,
-                 ):
-
-        self._pairs = pairs
-
-        self._bin_arrs = bin_arrs
-
-        self._dt = dt
+    def __init__(self, bin_arr):
+        self.bin_arr = bin_arr
 
     def solve(self,
               pairs=None,
-              bin_arrs=None,
               dt=1,
               ):
         if pairs is None:
-            if self._pairs is None:
-                raise ValueError("pairs should be defined")
-            pairs = self._pairs
-
-        if bin_arrs is None:
-            if self._bin_arrs is None:
-                raise ValueError("binned arrays should be defined")
-            bin_arrs = self._bin_arrs
+            raise ValueError("pairs should be defined")
 
         if not dt:
-            if not self._dt:
-                self._dt = dt = 1
-            dt = self._dt
+            dt = 1
 
         entropy_final = []
 
@@ -55,9 +36,9 @@ class MATETENET(object):
             te_calc_class = JPackage("infodynamics.measures.continuous.kernel").TransferEntropyCalculatorKernel
             te_calc = te_calc_class()
             te_calc.setProperty("NORMALISE", "true")
-            te_calc.initialise(self._dt, 0.5)
+            te_calc.initialise(dt, 0.5)
 
-            te_calc.setObservations(JArray(JDouble, 1)(list(bin_arrs[pair[1]])), JArray(JDouble, 1)(list(bin_arrs[pair[0]])))
+            te_calc.setObservations(JArray(JDouble, 1)(list(self.bin_arr[pair[1]])), JArray(JDouble, 1)(list(self.bin_arr[pair[0]])))
 
             entropy_final.append(te_calc.computeAverageLocalOfObservations())
 
