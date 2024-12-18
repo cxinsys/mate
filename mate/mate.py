@@ -150,7 +150,7 @@ class MATE(object):
         else:
             list_pairs = [pairs[i:i + sub_batch] for i in range(0, len(pairs), sub_batch)]
             list_device = []
-            list_device = [backend + ":" + str(i % n_process) for i in range(len(list_pairs))]
+            list_device = [backend + ":" + str(device_ids[i % n_process]) for i in range(len(list_pairs))]
             list_dt = [dt for i in range(len(list_pairs))]
             list_surrogate = [surrogate for i in range(len(list_pairs))]
             list_numsurro = [num_surrogate for i in range(len(list_pairs))]

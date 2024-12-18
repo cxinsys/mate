@@ -1,2 +1,1 @@
-from mate.array.module import get_array_module
-from mate.array.module import parse_device
+from mate.array.utils import get_array_module, parse_device
