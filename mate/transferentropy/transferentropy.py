@@ -10,9 +10,6 @@ from scipy.stats import norm
 from mate.array import get_array_module
 
 class TransferEntropy(object):
-    def __init__(self, bin_arr):
-        self.bin_arr = bin_arr
-
     @property
     def am(self):
         return self._am
@@ -82,16 +79,22 @@ class TransferEntropy(object):
 
     def solve(self,
               backend='cpu',
+              batch_size=None,
               pairs=None,
+              bin_arrs=None,
               dt=1,
               surrogate=False,
               num_surrogate=1000,
               threshold=0.05,
+              id=None,
               n_pairs=None,
               len_time=None,
               ):
 
         self._am = get_array_module(backend)
+
+        if not batch_size:
+            raise ValueError("batch size should be defined")
 
         if pairs is None:
             raise ValueError("pairs should be defined")
@@ -99,64 +102,79 @@ class TransferEntropy(object):
         if not n_pairs:
             n_pairs = len(pairs)
 
+
+        if bin_arrs is None:
+            raise ValueError("binned arrays should be defined")
+
+
         if not len_time:
-            len_time = self.bin_arr.shape[1]
+            len_time = bin_arrs.shape[1]
 
         if not dt:
             dt = 1
 
-        bin_arrs = self.am.array(self.bin_arr, dtype=str(self.bin_arr.dtype))
+        bin_arrs = self.am.array(bin_arrs, dtype=str(bin_arrs.dtype))
         g_pairs = self.am.array(pairs, dtype=str(pairs.dtype))
 
         entropy_final = []
 
-        inds_pair = self.am.arange(len(g_pairs))
+        # print("[%s ID: %d, Batch #%d]" % (str(self.am.backend).upper(), self.am.device_id))
+        for i_iter, i_beg in enumerate(tqdm(range(0, n_pairs, batch_size), desc=f"Process {id}", position=id, leave=True)):
+            t_beg_batch = time.time()
 
-        t_pairs = g_pairs[:, 0]
-        s_pairs = g_pairs[:, 1]
+            stime_preproc = time.time()
 
-        tile_inds_pair = self.am.repeat(inds_pair, (len_time - 1)) # (pairs, time * kernel)
-        tile_inds_pair = self.am.tile(tile_inds_pair, bin_arrs.shape[-1])
+            i_end = i_beg + batch_size
+            inds_pair = self.am.arange(len(g_pairs[i_beg:i_end]))
 
-        entropies = self.compute_te(bin_arrs=bin_arrs,
-                                    t_pairs=t_pairs,
-                                    s_pairs=s_pairs,
-                                    tile_inds_pair=tile_inds_pair,
-                                    dt=dt,
-                                    len_time=len_time)
-        # end TE
+            t_pairs = g_pairs[i_beg:i_end, 0]
+            s_pairs = g_pairs[i_beg:i_end, 1]
 
-        if surrogate is True:
-            surrogate_tes = []
-            for i in tqdm(range(num_surrogate)):
-                idx = np.random.rand(*bin_arrs.shape).argsort(axis=1)
-                # shuffle array along trajectory axis
-                bin_arrs = self.am.take_along_axis(bin_arrs, self.am.array(idx), axis=1)
+            tile_inds_pair = self.am.repeat(inds_pair, (len_time - 1)) # (pairs, time * kernel)
+            tile_inds_pair = self.am.tile(tile_inds_pair, bin_arrs.shape[-1])
 
-                entropy_surrogate = self.compute_te(bin_arrs=bin_arrs,
-                                                    t_pairs=t_pairs,
-                                                    s_pairs=s_pairs,
-                                                    tile_inds_pair=tile_inds_pair,
-                                                    dt=dt,
-                                                    len_time=len_time)
+            entropies = self.compute_te(bin_arrs=bin_arrs,
+                                        t_pairs=t_pairs,
+                                        s_pairs=s_pairs,
+                                        tile_inds_pair=tile_inds_pair,
+                                        dt=dt,
+                                        len_time=len_time)
+            # end TE
 
-                entropy_surrogate = self.am.asnumpy(entropy_surrogate)
+            # if surrogate is True:
+            #     surrogate_tes = []
+            #     for i in tqdm(range(num_surrogate)):
+            #         idx = np.random.rand(*bin_arrs.shape).argsort(axis=1)
+            #         # shuffle array along trajectory axis
+            #         bin_arrs = self.am.take_along_axis(bin_arrs, self.am.array(idx), axis=1)
+            #
+            #         entropy_surrogate = self.compute_te(bin_arrs=bin_arrs,
+            #                                             t_pairs=t_pairs,
+            #                                             s_pairs=s_pairs,
+            #                                             tile_inds_pair=tile_inds_pair,
+            #                                             n_bins=n_bins,
+            #                                             dt=dt,
+            #                                             len_time=len_time)
+            #
+            #         entropy_surrogate = self.am.asnumpy(entropy_surrogate)
+            #
+            #         surrogate_tes.append(entropy_surrogate)
+            #
+            #     print("[surrogate created]")
+            #     surrogate_tes = np.array(surrogate_tes)
+            #
+            #     # # 2안: surrogate의 각 TE로부터 분포 구성 -> 상위 k% 값 추출
+            #     means = np.mean(surrogate_tes, axis=0)
+            #     std = np.std(surrogate_tes, axis=0)
+            #     top_values = norm.ppf((1 - threshold), loc=means, scale=std)
+            #
+            #     # original te 값과 비교 -> original te < surrogate top te 이면 0
+            #     entropies[self.am.asnumpy(entropies) <= top_values] = 0.0
+            #     print("Number of entropies after eleminating FD")
+            #     print(f'[Before] {len(entropies)}, [Num. zero val] {len(entropies) - len(np.nonzero(self.am.asnumpy(entropies))[0])}')
 
-                surrogate_tes.append(entropy_surrogate)
+            entropy_final.extend(list(self.am.asnumpy(entropies)))
 
-            print("[surrogate created]")
-            surrogate_tes = np.array(surrogate_tes)
-
-            # # 2안: surrogate의 각 TE로부터 분포 구성 -> 상위 k% 값 추출
-            means = np.mean(surrogate_tes, axis=0)
-            std = np.std(surrogate_tes, axis=0)
-            top_values = norm.ppf((1 - threshold), loc=means, scale=std)
-
-            # original te 값과 비교 -> original te < surrogate top te 이면 0
-            entropies[self.am.asnumpy(entropies) <= top_values] = 0.0
-            print("Number of entropies after eleminating FD")
-            print(f'[Before] {len(entropies)}, [Num. zero val] {len(entropies) - len(np.nonzero(self.am.asnumpy(entropies))[0])}')
-
-        entropy_final.extend(list(self.am.asnumpy(entropies)))
+            # print("[%s ID: %d, Batch #%d] Batch processing elapsed time: %f" % (str(self.am.backend).upper(), self.am.device_id, i_iter + 1, time.time() - t_beg_batch))
 
         return pairs, np.array(entropy_final)

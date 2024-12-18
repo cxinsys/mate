@@ -129,40 +129,30 @@ class MATE(object):
 
         processes = []
         t_beg_batch = time.time()
+
         if "cpu" in backend:
             print("[CPU device selected]")
             print("[Num. Processes: {}, Num. Pairs: {}, Num. Sub_Pair: {}, Batch Size: {}]".format(n_process, n_pairs,
-                                                                                                 n_subpairs, batch_size))
+                                                                                                   n_subpairs,
+                                                                                                   batch_size))
         elif "tenet" in backend.lower():
             print("[TENET selected]")
             print("[Num. Processes: {}, Num. Pairs: {}, Num. Sub Pairs: {}]".format(n_process, n_pairs, n_subpairs))
         else:
             print("[GPU device selected]")
-            print("[Num. GPUS: {}, Num. Pairs: {}, Num. GPU_Pairs: {}, Batch Size: {}, Process per device: {}]".format(n_process, n_pairs,
-                                                                                               n_subpairs, batch_size, procs_per_device))
+            print("[Num. GPUS: {}, Num. Pairs: {}, Num. GPU_Pairs: {}, Batch Size: {}, Process per device: {}]".format(
+                n_process, n_pairs,
+                n_subpairs, batch_size, procs_per_device))
 
-        if "tenet" in backend.lower():
-            list_pairs = [pairs[i:i + n_procpairs] for i in range(0, len(pairs), n_procpairs)]
-            list_dt = [dt for i in range(len(list_pairs))]
-
-            te = MATETENET(bin_arr=arr)
-            inputs = zip(list_pairs, list_dt)
-        else:
-            list_pairs = [pairs[i:i + sub_batch] for i in range(0, len(pairs), sub_batch)]
-            list_device = []
-            list_device = [backend + ":" + str(device_ids[i % n_process]) for i in range(len(list_pairs))]
-            list_dt = [dt for i in range(len(list_pairs))]
-            list_surrogate = [surrogate for i in range(len(list_pairs))]
-            list_numsurro = [num_surrogate for i in range(len(list_pairs))]
-            list_threshold = [threshold for i in range(len(list_pairs))]
-
-            te = TransferEntropy(bin_arr=arr)
-            inputs = zip(list_device,
-                         list_pairs,
-                         list_dt,
-                         list_surrogate,
-                         list_numsurro,
-                         list_threshold)
+        list_device = []
+        list_subatch = []
+        list_pairs = []
+        list_arr = []
+        list_dt = []
+        list_surrogate = []
+        list_numsurro = []
+        list_threshold = []
+        list_id = []
 
         if surrogate is True:
             # seeding for surrogate test before applying multiprocessing
@@ -171,10 +161,52 @@ class MATE(object):
             print("[Number of surrogates] ", num_surrogate)
             print("[Threshold] ", threshold)
 
-        with multiprocessing.Pool(processes=n_process*procs_per_device) as pool:
-            for batch_result in tqdm(pool.istarmap(te.solve, inputs), total=len(list_pairs)):
-                pairs, entropies = batch_result
-                self._result_matrix[pairs[:, 0], pairs[:, 1]] = entropies
+        cnt = 0
+        for i, i_beg in enumerate(range(0, n_pairs, n_subpairs)):
+            i_end = i_beg + n_subpairs
+
+            for j, j_beg in enumerate(range(0, n_subpairs, n_procpairs)):
+                t_beg = i_beg + j_beg
+                t_end = t_beg + n_procpairs
+
+                device_name = backend + ":" + str(device_ids[i])
+                list_device.append(device_name)
+                list_subatch.append(sub_batch)
+                list_pairs.append(pairs[t_beg:t_end])
+                list_arr.append(arr)
+                list_dt.append(dt)
+                list_surrogate.append(surrogate)
+                list_numsurro.append(num_surrogate)
+                list_threshold.append(threshold)
+                list_id.append(cnt)
+                cnt += 1
+
+        pool = multiprocessing.Pool(processes=n_process * procs_per_device)
+
+        if "tenet" in backend.lower():
+            te = MATETENET()
+            inputs = zip(list_pairs, list_arr, list_dt)
+        else:
+            te = TransferEntropy()
+            inputs = zip(list_device,
+                         list_subatch,
+                         list_pairs,
+                         list_arr,
+                         list_dt,
+                         list_surrogate,
+                         list_numsurro,
+                         list_threshold,
+                         list_id)
+
+        results = pool.starmap(te.solve, inputs)
+
+        pool.close()
+        pool.join()
+
+        for result in results:
+            pairs, entropies = result
+            self._result_matrix[pairs[:, 0], pairs[:, 1]] = entropies
+
+        print("Total processing elapsed time {}sec.".format(time.time() - t_beg_batch))
 
         return self._result_matrix
-
