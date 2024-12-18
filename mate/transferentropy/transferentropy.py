@@ -105,8 +105,8 @@ class TransferEntropy(object):
         if not dt:
             dt = 1
 
-        bin_arrs = self.am.array(self.bin_arr, dtype=self.bin_arr.dtype)
-        g_pairs = self.am.array(pairs, dtype=pairs.dtype)
+        bin_arrs = self.am.array(self.bin_arr, dtype=str(self.bin_arr.dtype))
+        g_pairs = self.am.array(pairs, dtype=str(pairs.dtype))
 
         entropy_final = []
 
