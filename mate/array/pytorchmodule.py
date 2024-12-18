@@ -50,7 +50,7 @@ class TorchModule(NumpyModule):
             return torch.tensor(args[0], dtype=TORCH_DTYPES[dtype], device='cuda:' + str(self.device_id))
         else:
             if type(args[0]) == list:
-                dtype = np.array(args[0]).dtype
+                dtype = str(np.array(args[0]).dtype)
             return torch.tensor(args[0], dtype=TORCH_DTYPES[dtype], device='cuda:' + str(self.device_id))
 
     def take(self, *args, **kwargs):
