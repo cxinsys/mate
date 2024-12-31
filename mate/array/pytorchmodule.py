@@ -26,6 +26,10 @@ try:
         'torch.float16': torch.float16,
         'torch.float32': torch.float32,
         'torch.float64': torch.float64,
+        'complex64': torch.complex64,
+        'complex128': torch.complex128,
+        'torch.complex64': torch.complex64,
+        'torch.complex128': torch.complex128,
     }
 except (ModuleNotFoundError, ImportError) as err:
     pass
@@ -188,10 +192,37 @@ class TorchModule(NumpyModule):
         return torch.linalg.pinv(*args, **kwargs)
 
     def sum(self, *args, **kwargs):
-        return torch.sum(*args, **kwargs)
+        val_dim = kwargs.pop('axis')
+        return torch.sum(*args, dim=val_dim)
 
     def diag(self, *args, **kwargs):
         return torch.diag(*args, **kwargs)
 
     def nonzero(self, *args, **kwargs):
         return torch.nonzero(*args, **kwargs, as_tuple=True)
+
+    def eig(self, *args, **kwargs):
+        return torch.linalg.eig(*args, **kwargs)
+
+    def inv(self, *args, **kwargs):
+        return torch.linalg.inv(*args, **kwargs)
+
+    def linspace(self, *args, **kwargs):
+        return torch.linspace(*args, **kwargs)
+
+    def zeros(self, *args, **kwargs):
+        if len(args) == 2:
+            return torch.zeros(args[0], dtype=TORCH_DTYPES[args[1]], device='cuda:' + str(self.device_id))
+        elif len(args) == 1 and len(kwargs) == 1:
+            dtype = kwargs.pop('dtype')
+            return torch.zeros(args[0], dtype=TORCH_DTYPES[dtype], device='cuda:' + str(self.device_id))
+        else:
+            if type(args[0]) == list:
+                dtype = str(np.array(args[0]).dtype)
+            return torch.zeros(args[0], dtype=TORCH_DTYPES[dtype], device='cuda:' + str(self.device_id))
+
+    def real(self, *args, **kwargs):
+        return torch.real(*args, **kwargs)
+
+    def matmul(self, *args, **kwargs):
+        return torch.matmul(*args, **kwargs)

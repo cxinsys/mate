@@ -142,3 +142,18 @@ class NumpyModule(ArrayModule):
 
     def nonzero(self, *args, **kwargs):
         return np.nonzero(*args, **kwargs)
+
+    def eig(self, *args, **kwargs):
+        return np.linalg.eig(*args, **kwargs)
+
+    def inv(self, *args, **kwargs):
+        return np.linalg.inv(*args, **kwargs)
+
+    def linspace(self, *args, **kwargs):
+        return np.linspace(*args, **kwargs)
+
+    def real(self, *args, **kwargs):
+        return np.real(*args, **kwargs)
+
+    def matmul(self, *args, **kwargs):
+        return np.matmul(*args, **kwargs)

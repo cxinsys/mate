@@ -160,3 +160,20 @@ class JaxModule(NumpyModule):
         devices = jax.devices()
         selected_device = next((device for device in devices if device.id == self.device_id), None)
         return device_put(jnp.nonzero(*args, **kwargs), selected_device)
+
+    def eig(self, *args, **kwargs):
+        return jnp.linalg.eig(*args, **kwargs)
+
+    def inv(self, *args, **kwargs):
+        return jnp.linalg.inv(*args, **kwargs)
+
+    def linspace(self, *args, **kwargs):
+        devices = jax.devices()
+        selected_device = next((device for device in devices if device.id == self.device_id), None)
+        return device_put(jnp.linspace(*args, **kwargs), selected_device)
+
+    def real(self, *args, **kwargs):
+        return jnp.real(*args, **kwargs)
+
+    def matmul(self, *args, **kwargs):
+        return jnp.matmul(*args, **kwargs)

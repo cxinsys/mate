@@ -201,3 +201,23 @@ class CuPyModule(NumpyModule):
     def nonzero(self, *args, **kwargs):
         with cp.cuda.Device(self.device_id):
             return cp.nonzero(*args, **kwargs)
+
+    def eig(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.linalg.eig(*args, **kwargs)
+
+    def inv(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.linalg.inv(*args, **kwargs)
+
+    def linspace(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.linspace(*args, **kwargs)
+
+    def real(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.real(*args, **kwargs)
+
+    def matmul(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.matmul(*args, **kwargs)

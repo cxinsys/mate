@@ -219,3 +219,27 @@ class TFModule(NumpyModule):
     def nonzero(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
             return tf.experimental.numpy.nonzero(*args, **kwargs)
+
+    def eig(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.linalg.eig(*args, **kwargs)
+
+    def inv(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.linalg.inv(*args, **kwargs)
+
+    def linspace(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.linspace(*args, **kwargs)
+
+    def zeros(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.zeros(*args, **kwargs)
+
+    def real(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.math.real(*args, **kwargs)
+
+    def matmul(self, *args, **kwargs):
+        with tf.device(f'/GPU:{self.device_id}'):
+            return tf.matmul(*args, *kwargs)
