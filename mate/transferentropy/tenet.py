@@ -10,11 +10,9 @@ from scipy.stats import norm
 from jpype import *
 
 class MATETENET(object):
-    def __init__(self, bin_arr):
-        self.bin_arr = bin_arr
-
     def solve(self,
               pairs=None,
+              bin_arr=None,
               dt=1,
               ):
         if pairs is None:
@@ -38,7 +36,7 @@ class MATETENET(object):
             te_calc.setProperty("NORMALISE", "true")
             te_calc.initialise(dt, 0.5)
 
-            te_calc.setObservations(JArray(JDouble, 1)(list(self.bin_arr[pair[1]])), JArray(JDouble, 1)(list(self.bin_arr[pair[0]])))
+            te_calc.setObservations(JArray(JDouble, 1)(list(bin_arr[pair[1]])), JArray(JDouble, 1)(list(bin_arr[pair[0]])))
 
             entropy_final.append(te_calc.computeAverageLocalOfObservations())
 

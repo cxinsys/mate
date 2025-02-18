@@ -24,6 +24,10 @@ class TransferEntropy(object):
 
         target_arr = self.am.take(bin_arrs, t_pairs, axis=0)
         source_arr = self.am.take(bin_arrs, s_pairs, axis=0)
+        # vals = self.am.stack((target_arr[:, (dt+1):, :],
+        #                       target_arr[:, dt:-1, :],
+        #                       source_arr[:, :-(dt+1), :]),
+        #                      axis=3)
         vals = self.am.stack((target_arr[:, dt:, :],
                               target_arr[:, :-dt, :],
                               source_arr[:, :-dt, :]),
