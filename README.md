@@ -1,5 +1,5 @@
 # MATE
-- **MATE** represents **M**anycore-processor-**A**ccelerated **T**ransfer **E**ntropy computation.
+- **MATE** represents **M**anycore computing for **A**cceleration of **T**ensor **E**xecution.
 
 
 ## Installation
