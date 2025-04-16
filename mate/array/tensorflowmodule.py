@@ -1,10 +1,40 @@
 try:
+    import numpy as np
     import tensorflow as tf
     from tensorflow.python.client import device_lib
 
     devices = tf.config.experimental.list_physical_devices('GPU')
     for device in devices:
         tf.config.experimental.set_memory_growth(device, True)
+
+    TF_DTYPES = {
+        'int16': tf.int16,
+        'int32': tf.int32,
+        'int64': tf.int64,
+        'float16': tf.float16,
+        'float32': tf.float32,
+        'float64': tf.float64,
+        "numpy.int16": tf.int16,
+        "numpy.int32": tf.int32,
+        "numpy.float16": tf.float16,
+        "numpy.float32": tf.float32,
+        "numpy.float64": tf.float64,
+        np.int16: tf.int16,
+        np.int32: tf.int32,
+        np.float16: tf.float16,
+        np.float32: tf.float32,
+        np.float64: tf.float64,
+        'torch.int16': tf.int16,
+        'torch.int32': tf.int32,
+        'torch.int64': tf.int64,
+        'torch.float16': tf.float16,
+        'torch.float32': tf.float32,
+        'torch.float64': tf.float64,
+        'complex64': tf.complex64,
+        'complex128': tf.complex128,
+        'torch.complex64': tf.complex64,
+        'torch.complex128': tf.complex128,
+    }
 except (ModuleNotFoundError, ImportError) as err:
     pass
 
@@ -126,7 +156,7 @@ class TFModule(NumpyModule):
 
     def astype(self, x, dtype):
         with tf.device(f'/GPU:{self.device_id}'):
-            return tf.cast(x, dtype=dtype)
+            return tf.cast(x, dtype=TF_DTYPES[dtype])
 
     def tile(self, *args, **kwargs):
         with tf.device(f'/GPU:{self.device_id}'):
