@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='mate-cxinsys',
-      version='0.1.20',
+      version='0.1.21',
       description='MATE',
       url='https://github.com/cxinsys/mate',
       author='Complex Intelligent Systems Laboratory (CISLAB)',

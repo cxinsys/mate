@@ -43,9 +43,9 @@ from mate.array.numpymodule import NumpyModule
 class TFModule(NumpyModule):
     def __init__(self, backend=None, device_id=None):
         super().__init__(backend, device_id)
-        gpus = tf.config.list_physical_devices('GPU')
-        if gpus:
-            tf.config.set_visible_devices(gpus[device_id], 'GPU')
+        # gpus = tf.config.list_physical_devices('GPU')
+        # if gpus:
+        #     tf.config.set_visible_devices(gpus[device_id], 'GPU')
     def __enter__(self):
         return self._device.__enter__()
 
