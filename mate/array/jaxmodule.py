@@ -5,6 +5,7 @@ import numpy as np
 
 try:
     os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
     import jax
     from jax import device_put
