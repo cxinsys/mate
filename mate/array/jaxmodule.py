@@ -20,6 +20,10 @@ class JaxModule(NumpyModule):
         super().__init__(backend, device_id)
         self.key = None
 
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
+        devices = jax.devices()
+        self.selected_device = next((device for device in devices if device.id == self.device_id), None)
+
     def __enter__(self):
         return self._device.__enter__()
 
@@ -27,9 +31,9 @@ class JaxModule(NumpyModule):
         return self._device.__exit__(*args, **kwargs)
 
     def array(self, *args, **kwargs):
-        devices = jax.devices()
-        selected_device = next((device for device in devices if device.id == self.device_id), None)
-        return device_put(jnp.array(*args, **kwargs), selected_device)
+        # return device_put(jnp.array(*args, **kwargs), self.selected_device)
+        with jax.default_device(self.selected_device):
+            return jnp.array(*args, **kwargs)
 
     def take(self, *args, **kwargs):
         return jnp.take(*args, **kwargs)
@@ -56,9 +60,11 @@ class JaxModule(NumpyModule):
         return jnp.lexsort(*args, **kwargs)
 
     def arange(self, *args, **kwargs):
-        devices = jax.devices()
-        selected_device = next((device for device in devices if device.id == self.device_id), None)
-        return device_put(jnp.arange(*args, **kwargs), selected_device)
+        # devices = jax.devices()
+        # selected_device = next((device for device in devices if device.id == self.device_id), None)
+        # return device_put(jnp.arange(*args, **kwargs), self.selected_device)
+        with jax.default_device(self.selected_device):
+            return jnp.arange(*args, **kwargs)
 
     def multiply(self, *args, **kwargs):
         return jnp.multiply(*args, **kwargs)
@@ -139,10 +145,12 @@ class JaxModule(NumpyModule):
 
         self.seed(int(datetime.now().timestamp()))
 
-        devices = jax.devices()
-        selected_device = next((device for device in devices if device.id == self.device_id), None)
-        return device_put(jax.random.uniform(key=self.key, shape=size, minval=minval, maxval=maxval),
-                          selected_device)
+        # devices = jax.devices()
+        # selected_device = next((device for device in devices if device.id == self.device_id), None)
+        # return device_put(jax.random.uniform(key=self.key, shape=size, minval=minval, maxval=maxval),
+        #                   self.selected_device)
+        with jax.default_device(self.selected_device):
+            return jax.random.uniform(key=self.key, shape=size, minval=minval, maxval=maxval)
 
     def linalg_solve(self, *args, **kwargs):
         return jax.scipy.linalg.solve(*args, **kwargs)
@@ -157,9 +165,11 @@ class JaxModule(NumpyModule):
         return jnp.diag(*args, **kwargs)
 
     def nonzero(self, *args, **kwargs):
-        devices = jax.devices()
-        selected_device = next((device for device in devices if device.id == self.device_id), None)
-        return device_put(jnp.nonzero(*args, **kwargs), selected_device)
+        # devices = jax.devices()
+        # selected_device = next((device for device in devices if device.id == self.device_id), None)
+        # return device_put(jnp.nonzero(*args, **kwargs), self.selected_device)
+        with jax.default_device(self.selected_device):
+            return jnp.nonzero(*args, **kwargs)
 
     def eig(self, *args, **kwargs):
         return jnp.linalg.eig(*args, **kwargs)
@@ -168,9 +178,11 @@ class JaxModule(NumpyModule):
         return jnp.linalg.inv(*args, **kwargs)
 
     def linspace(self, *args, **kwargs):
-        devices = jax.devices()
-        selected_device = next((device for device in devices if device.id == self.device_id), None)
-        return device_put(jnp.linspace(*args, **kwargs), selected_device)
+        # devices = jax.devices()
+        # selected_device = next((device for device in devices if device.id == self.device_id), None)
+        # return device_put(jnp.linspace(*args, **kwargs), self.selected_device)
+        with jax.default_device(self.selected_device):
+                return jnp.linspace(*args, **kwargs)
 
     def real(self, *args, **kwargs):
         return jnp.real(*args, **kwargs)
