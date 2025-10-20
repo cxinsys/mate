@@ -18,6 +18,7 @@ class Discretizer():
     def binning(self, arr):
 
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
@@ -39,6 +40,7 @@ class InterpDiscretizer(Discretizer):
         arrs = []
 
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
@@ -80,6 +82,7 @@ class ShiftDiscretizer(Discretizer):
         arrs = []
 
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
@@ -124,6 +127,7 @@ class TagDiscretizer(Discretizer):
         arrs = []
 
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
@@ -159,6 +163,7 @@ class FixedWidthDiscretizer(Discretizer):
     def binning(self, arr):
         binned_data = []
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
@@ -185,6 +190,7 @@ class QuantileDiscretizer(Discretizer):
     def binning(self, arr):
         binned_data = []
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
@@ -212,6 +218,7 @@ class KmeansDiscretizer(Discretizer):
     def binning(self, arr):
         binned_data = []
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
@@ -238,6 +245,7 @@ class LogDiscretizer(Discretizer):
     def binning(self, arr):
         binned_data = []
         stds = np.std(arr, axis=1, ddof=1)
+        stds = np.where(stds == 0, 1, stds)
         mins = np.min(arr, axis=1)
         maxs = np.max(arr, axis=1)
 
