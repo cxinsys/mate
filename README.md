@@ -1,4 +1,3 @@
-🧉
 # MATE
 - **MATE** represents **M**anycore computing for **A**cceleration of **T**ensor **E**xecution.
 
